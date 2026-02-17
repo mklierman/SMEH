@@ -18,7 +18,10 @@ var visualStudioService = new VisualStudioInstallerService(options.VisualStudio,
 var clangService = new ClangInstallerService(options.Clang, downloadHelper, processRunner);
 var cssUnrealService = new CssUnrealEngineService(options.CssUnrealEngine, downloadHelper, processRunner);
 var wwiseCliService = new WwiseCliService(options.WwiseCli, options.CssUnrealEngine, downloadHelper, processRunner);
-var starterProjectService = new StarterProjectService(options.StarterProject, options.CssUnrealEngine, processRunner);
+var starterProjectService = new StarterProjectService(options.StarterProject, options.CssUnrealEngine, downloadHelper, processRunner);
+var generateVsProjectService = new GenerateVsProjectService(options.CssUnrealEngine, options.WwiseCli, processRunner);
+var buildEditorService = new BuildEditorService(options.CssUnrealEngine, options.WwiseCli, processRunner);
+var openEditorService = new OpenEditorService(options.CssUnrealEngine, options.WwiseCli);
 var cleanupService = new CleanupService();
 
 while (true)
@@ -44,18 +47,15 @@ while (true)
             "4" => await RunOptionAsync("Starter Project (SML)", () => starterProjectService.RunAsync()),
             "5" => await RunOptionAsync("Wwise-CLI", () => wwiseCliService.RunAsync()),
             "6" => await RunOptionAsync("Cleanup temp files", () => cleanupService.RunAsync()),
-            "7" => await RunOptionAsync("Clear GitHub token", () =>
-            {
-                SmehState.SetGitHubAccessToken(null);
-                Console.WriteLine("GitHub token cleared. You will be asked to authorize again when needed (e.g. option 3).");
-                return Task.CompletedTask;
-            }),
+            "7" => await RunOptionAsync("Generate Visual Studio project files", () => generateVsProjectService.RunAsync()),
+            "8" => await RunOptionAsync("Build Editor", () => buildEditorService.RunAsync()),
+            "9" => await RunOptionAsync("Open in Unreal Editor", () => openEditorService.RunAsync()),
             _ => false
         };
 
         if (!completed)
         {
-            Console.WriteLine("Invalid option. Please choose 1-7 or 0 to exit.");
+            Console.WriteLine("Invalid option. Please choose 1-9 or 0 to exit.");
         }
     }
     catch (InvalidProgramException ex)
@@ -83,9 +83,11 @@ static void ShowMenu()
     Console.WriteLine("4. Starter Project");
     Console.WriteLine("5. Wwise");
     Console.WriteLine("6. Cleanup temp files");
-    Console.WriteLine("7. Clear GitHub token");
+    Console.WriteLine("7. Generate Visual Studio project files");
+    Console.WriteLine("8. Build Editor");
+    Console.WriteLine("9. Open in Unreal Editor");
     Console.WriteLine("0. Exit");
-    Console.Write("Select option (0-7): ");
+    Console.Write("Select option (0-9): ");
 }
 
 static async Task<bool> RunOptionAsync(string name, Func<Task> run)

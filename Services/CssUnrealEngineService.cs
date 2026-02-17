@@ -53,20 +53,24 @@ public class CssUnrealEngineService
             return;
         }
 
-        // Resolve GitHub access token: saved OAuth, then OAuth device flow, then PAT fallback
-        var token = SmehState.GetGitHubAccessToken();
-        var clientId = _options.GitHubOAuthClientId?.Trim();
-        if (string.IsNullOrEmpty(token) && !string.IsNullOrEmpty(clientId))
+        Console.WriteLine();
+        Console.Write("Use a Personal Access Token (PAT) to download here, or download and install the engine manually? (PAT / manual): ");
+        var choice = Console.ReadLine()?.Trim().ToUpperInvariant();
+        if (choice == "MANUAL" || choice == "M")
         {
-            Console.WriteLine("No saved GitHub authorization. Starting OAuth device flow (you can use 2FA when authorizing).");
-            token = await GitHubOAuthHelper.RunDeviceFlowAsync(clientId);
-            if (!string.IsNullOrEmpty(token))
-            {
-                SmehState.SetGitHubAccessToken(token);
-                Console.WriteLine("Authorization saved for future runs.");
-            }
+            const string releasesUrl = "https://github.com/satisfactorymodding/UnrealEngine/releases/latest";
+            Console.WriteLine();
+            Console.WriteLine("Download and install the engine yourself:");
+            Console.WriteLine($"  1. Open: {releasesUrl}");
+            Console.WriteLine("  2. Download all the .bin files and the .exe installer.");
+            Console.WriteLine("  3. Put them in the same folder.");
+            Console.WriteLine("  4. Run the .exe when everything is downloaded.");
+            Console.WriteLine();
+            return;
         }
 
+        // PAT path: resolve token from saved, then config/env, then prompt (OAuth code left in repo for possible future use)
+        var token = SmehState.GetGitHubAccessToken();
         if (string.IsNullOrEmpty(token))
         {
             token = Environment.GetEnvironmentVariable("SMEH_GITHUB_PAT")?.Trim() ?? _options.GitHubPat?.Trim();
@@ -76,8 +80,15 @@ public class CssUnrealEngineService
 
         if (string.IsNullOrEmpty(token))
         {
-            Console.WriteLine("No GitHub token available. Set CssUnrealEngine:GitHubOAuthClientId for OAuth, or CssUnrealEngine:GitHubPat / SMEH_GITHUB_PAT for a Personal Access Token (repo scope).");
-            return;
+            Console.WriteLine("Enter your GitHub Personal Access Token (PAT with repo scope) and press Enter:");
+            token = Console.ReadLine()?.Trim();
+            if (string.IsNullOrEmpty(token))
+            {
+                Console.WriteLine("No token entered. Aborted.");
+                return;
+            }
+            SmehState.SetGitHubAccessToken(token);
+            Console.WriteLine("PAT saved for future runs.");
         }
 
         var releaseUrl = $"https://api.github.com/repos/{repo}/releases/latest";

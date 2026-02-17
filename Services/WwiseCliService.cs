@@ -119,9 +119,14 @@ public class WwiseCliService
         var sdkVersion = _options.SdkVersion.Trim();
         if (string.IsNullOrEmpty(sdkVersion))
             sdkVersion = "2023.1.3.8471";
-        var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170";
-        Console.WriteLine("Running: wwise-cli download ...");
-        var downloadResult = await _processRunner.RunAsync(exePath, downloadArgs, workingDir, waitForExit: true);
+        var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --email \"\" --password \"\"";
+        Console.WriteLine("Running: wwise-cli download ... (output below)");
+        var downloadResult = await _processRunner.RunWithConsoleOutputAsync(exePath, downloadArgs, workingDir, waitForExit: true, sendInputWhenLine: line =>
+        {
+            if (line != null && (line.Contains("Enter Wwise email:", StringComparison.OrdinalIgnoreCase) || line.Contains("Enter Wwise password:", StringComparison.OrdinalIgnoreCase)))
+                return "";
+            return null;
+        });
         if (downloadResult.ExitCode != 0)
         {
             Console.WriteLine($"Download step failed (exit code {downloadResult.ExitCode}).");
@@ -138,8 +143,10 @@ public class WwiseCliService
         if (string.IsNullOrEmpty(integrationVersion))
             integrationVersion = "2023.1.3.2970";
         var integrateArgs = $"integrate-ue --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
-        Console.WriteLine("Running: wwise-cli integrate-ue ...");
-        var integrateResult = await _processRunner.RunAsync(exePath, integrateArgs, workingDir, waitForExit: true);
+        Console.WriteLine("Running: wwise-cli integrate-ue ... (output below)");
+        Console.WriteLine("If prompted for Wwise email and password, press Enter twice (empty).");
+        // Attach stdin to console so the child gets a real console and avoids 'The handle is invalid' from some tools when stdin is redirected.
+        var integrateResult = await _processRunner.RunWithConsoleOutputAsync(exePath, integrateArgs, workingDir, waitForExit: true, attachStdinToConsole: true, heartbeatInterval: TimeSpan.FromSeconds(30), heartbeatMessage: "Integrate step still running...");
         if (integrateResult.ExitCode != 0)
         {
             Console.WriteLine($"Integrate step failed (exit code {integrateResult.ExitCode}).");
