@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using Spectre.Console;
 
 namespace SMEH.Helpers;
 
@@ -67,7 +68,7 @@ public class ProcessRunner
         {
             if (e.Data != null)
             {
-                Console.WriteLine(e.Data);
+                AnsiConsole.WriteLine(e.Data);
                 stdout.AppendLine(e.Data);
                 if (redirectStdin && sendInputWhenLine?.Invoke(e.Data) is { } response)
                     TrySendInput(process, response);
@@ -77,7 +78,7 @@ public class ProcessRunner
         {
             if (e.Data != null)
             {
-                Console.WriteLine(e.Data);
+                AnsiConsole.WriteLine(e.Data);
                 stderr.AppendLine(e.Data);
                 if (redirectStdin && sendInputWhenLine?.Invoke(e.Data) is { } response)
                     TrySendInput(process, response);
@@ -102,7 +103,7 @@ public class ProcessRunner
                     var completed = await Task.WhenAny(exitTask, Task.Delay(heartbeatInterval.Value));
                     if (completed == exitTask)
                         break;
-                    Console.WriteLine(heartbeatMessage);
+                    AnsiConsole.MarkupLine($"[dim]{heartbeatMessage}[/]");
                 }
                 await exitTask;
             }
@@ -118,8 +119,8 @@ public class ProcessRunner
     private static void PrintCommand(string fileName, string arguments, string workingDirectory)
     {
         var cmd = string.IsNullOrEmpty(arguments) ? fileName : $"{fileName} {arguments}";
-        Console.WriteLine($"> {cmd}");
-        Console.WriteLine($"> (in {workingDirectory})");
+        AnsiConsole.MarkupLineInterpolated($"[dim]> {Markup.Escape(cmd)}[/]");
+        AnsiConsole.MarkupLineInterpolated($"[dim]> (in {Markup.Escape(workingDirectory)})[/]");
     }
 
     private static async Task SendInputAfterDelayAsync(Process process, int delayMs, string input)

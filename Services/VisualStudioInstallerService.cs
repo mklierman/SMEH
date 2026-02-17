@@ -1,3 +1,4 @@
+using Spectre.Console;
 using SMEH.Helpers;
 using SMEH;
 
@@ -25,12 +26,12 @@ public class VisualStudioInstallerService
         Directory.CreateDirectory(tempDir);
         var bootstrapperPath = Path.Combine(tempDir, "vs_community.exe");
 
-        Console.WriteLine("Installing Visual Studio 2022 Community Edition (free).");
-        Console.WriteLine("Downloading bootstrapper...");
+        AnsiConsole.MarkupLine("[dim]Installing Visual Studio 2022 Community Edition (free).[/]");
+        AnsiConsole.MarkupLine("[dim]Downloading bootstrapper...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
         await _downloadHelper.DownloadFileAsync(CommunityBootstrapperUrl, bootstrapperPath, progress);
         ConsoleProgressBar.Clear();
-        Console.WriteLine("Download complete.");
+        AnsiConsole.MarkupLine("[green]Download complete.[/]");
 
         string? configPath = null;
         var localPath = _options.ConfigFilePath?.Trim();
@@ -39,7 +40,7 @@ public class VisualStudioInstallerService
             configPath = Path.IsPathRooted(localPath) ? localPath : Path.Combine(AppContext.BaseDirectory, localPath);
             if (!File.Exists(configPath))
             {
-                Console.WriteLine($"Config file not found: {_options.ConfigFilePath}. Will try config URL if set.");
+                AnsiConsole.MarkupLineInterpolated($"[yellow]Config file not found: {Markup.Escape(_options.ConfigFilePath ?? "")}. Will try config URL if set.[/]");
                 configPath = null;
             }
         }
@@ -50,11 +51,11 @@ public class VisualStudioInstallerService
             if (string.IsNullOrEmpty(configFileName))
                 configFileName = "SML.vsconfig";
             configPath = Path.Combine(tempDir, configFileName);
-            Console.WriteLine("Downloading Visual Studio config (SML workload)...");
+            AnsiConsole.MarkupLine("[dim]Downloading Visual Studio config (SML workload)...[/]");
             var configProgress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Config"));
             await _downloadHelper.DownloadFileAsync(_options.ConfigFileUrl, configPath, configProgress);
             ConsoleProgressBar.Clear();
-            Console.WriteLine("Config download complete.");
+            AnsiConsole.MarkupLine("[green]Config download complete.[/]");
         }
 
         var hasConfig = !string.IsNullOrEmpty(configPath) && File.Exists(configPath);
@@ -64,17 +65,17 @@ public class VisualStudioInstallerService
         if (hasConfig)
             arguments = $"--config \"{configPath}\" {arguments}";
 
-        Console.WriteLine("Running Visual Studio installer (this may take a long time)...");
+        AnsiConsole.MarkupLine("[dim]Running Visual Studio installer (this may take a long time)...[/]");
         var result = await _processRunner.RunAsync(bootstrapperPath, arguments, tempDir, waitForExit: true);
 
         if (result.ExitCode != 0)
         {
-            Console.WriteLine($"Installer exited with code {result.ExitCode}.");
+            AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
             if (!string.IsNullOrEmpty(result.StdError))
-                Console.WriteLine("Stderr: " + result.StdError);
+                AnsiConsole.WriteLine("Stderr: " + result.StdError);
             return;
         }
 
-        Console.WriteLine("Visual Studio 2022 installation finished successfully.");
+        AnsiConsole.MarkupLine("[green]Visual Studio 2022 installation finished successfully.[/]");
     }
 }

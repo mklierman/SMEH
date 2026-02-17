@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Spectre.Console;
 using SMEH;
 
 namespace SMEH.Services;
@@ -20,47 +21,31 @@ public class OpenEditorService
         if (string.IsNullOrEmpty(projectDir))
             return Task.CompletedTask;
 
-        var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
-        if (string.IsNullOrEmpty(cssPath))
-            cssPath = @"C:\Program Files\Unreal Engine - CSS";
-        if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine, SmehState.StepStarterProject }, projectDir, cssPath))
-            return Task.CompletedTask;
-
         var uprojectPath = Path.Combine(projectDir, "FactoryGame.uproject");
         if (!File.Exists(uprojectPath))
         {
-            Console.WriteLine($"FactoryGame.uproject not found at: {uprojectPath}");
-            Console.WriteLine("Ensure the Starter Project (option 4) is cloned and contains FactoryGame.uproject.");
-            return Task.CompletedTask;
-        }
-
-        var editorExe = Path.Combine(cssPath, "Engine", "Binaries", "Win64", "UnrealEditor.exe");
-        if (!File.Exists(editorExe))
-        {
-            Console.WriteLine($"UnrealEditor.exe not found at: {editorExe}");
-            Console.WriteLine("Ensure CSS Unreal Engine is installed and CssUnrealEngine:InstallPath in appsettings.json is correct.");
+            AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
+            AnsiConsole.MarkupLine("[yellow]Ensure the Starter Project (option 4) is cloned and contains FactoryGame.uproject.[/]");
             return Task.CompletedTask;
         }
 
         var fullUprojectPath = Path.GetFullPath(uprojectPath);
-        Console.WriteLine($"Opening Unreal Editor: {fullUprojectPath}");
+        AnsiConsole.MarkupLineInterpolated($"[dim]Opening project: {Markup.Escape(fullUprojectPath)}[/]");
         try
         {
             using var process = Process.Start(new ProcessStartInfo
             {
-                FileName = editorExe,
-                Arguments = $"\"{fullUprojectPath}\"",
-                WorkingDirectory = projectDir,
+                FileName = fullUprojectPath,
                 UseShellExecute = true
             });
             if (process != null)
-                Console.WriteLine("Unreal Editor is starting. You can return to the menu.");
+                AnsiConsole.MarkupLine("[green]Project is opening. You can return to the menu.[/]");
             else
-                Console.WriteLine("Failed to start Unreal Editor.");
+                AnsiConsole.MarkupLine("[red]Failed to open project.[/]");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to launch Unreal Editor: {ex.Message}");
+            AnsiConsole.MarkupLineInterpolated($"[red]Failed to open project: {Markup.Escape(ex.Message)}[/]");
         }
         return Task.CompletedTask;
     }
@@ -75,20 +60,22 @@ public class OpenEditorService
         if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
             return path;
 
-        Console.WriteLine("Starter project path not found. Run option 4 (Starter Project) first to clone the repo,");
-        Console.WriteLine("or set WwiseCli:StarterProjectPath in appsettings.json to the clone directory.");
-        Console.Write("Enter path to SatisfactoryModLoader clone now (or press Enter to cancel): ");
-        path = Console.ReadLine()?.Trim();
-        if (string.IsNullOrEmpty(path))
+        AnsiConsole.MarkupLine("[yellow]Starter project path not found. Run option 4 (Starter Project) first to clone the repo,[/]");
+        AnsiConsole.MarkupLine("[yellow]or set WwiseCli:StarterProjectPath in appsettings.json to the clone directory.[/]");
+        path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to SatisfactoryModLoader clone (or press Enter to cancel):")
+            .AllowEmpty());
+        if (string.IsNullOrEmpty(path?.Trim()))
         {
-            Console.WriteLine("Cancelled.");
+            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
             return null;
         }
+        path = path.Trim();
         if (!Directory.Exists(path))
         {
-            Console.WriteLine($"Directory not found: {path}");
+            AnsiConsole.MarkupLineInterpolated($"[red]Directory not found: {Markup.Escape(path)}[/]");
             return null;
         }
+        SmehState.SetLastClonePath(path);
         return path;
     }
 }

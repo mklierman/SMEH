@@ -1,3 +1,5 @@
+using Spectre.Console;
+
 namespace SMEH.Services;
 
 public class CleanupService
@@ -10,30 +12,31 @@ public class CleanupService
         var path = TempRoot;
         if (!Directory.Exists(path))
         {
-            Console.WriteLine("No SMEH temp files found. Nothing to clean.");
+            AnsiConsole.MarkupLine("[dim]No SMEH temp files found. Nothing to clean.[/]");
             return Task.CompletedTask;
         }
 
-        Console.WriteLine("The following directory and all its contents will be deleted:");
-        Console.WriteLine($"  {path}");
-        Console.WriteLine();
-        Console.Write("Are you sure? (y/n): ");
-        var answer = Console.ReadLine()?.Trim().ToUpperInvariant();
-        if (answer != "Y" && answer != "YES")
+        AnsiConsole.MarkupLine("The following directory and all its contents will be deleted:");
+        AnsiConsole.MarkupLineInterpolated($"[yellow]  {Markup.Escape(path)}[/]");
+        AnsiConsole.WriteLine();
+        var answer = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Are you sure?")
+            .AddChoices("Yes", "No"));
+        if (answer != "Yes")
         {
-            Console.WriteLine("Cleanup cancelled.");
+            AnsiConsole.MarkupLine("[dim]Cleanup cancelled.[/]");
             return Task.CompletedTask;
         }
 
         try
         {
             Directory.Delete(path, recursive: true);
-            Console.WriteLine("Temp files deleted successfully.");
+            AnsiConsole.MarkupLine("[green]Temp files deleted successfully.[/]");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Could not delete all temp files: {ex.Message}");
-            Console.WriteLine("Some files may be in use. Close other programs or try again later.");
+            AnsiConsole.MarkupLineInterpolated($"[red]Could not delete all temp files: {Markup.Escape(ex.Message)}[/]");
+            AnsiConsole.MarkupLine("[yellow]Some files may be in use. Close other programs or try again later.[/]");
         }
 
         return Task.CompletedTask;

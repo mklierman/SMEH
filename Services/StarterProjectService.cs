@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Spectre.Console;
 using SMEH.Helpers;
 using SMEH;
 
@@ -32,13 +33,13 @@ public class StarterProjectService
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine }, cssUnrealEnginePath: string.IsNullOrEmpty(cssPath) ? null : cssPath))
             return;
 
-        Console.Write("Enter install location for the starter project (e.g. C:\\Modding): ");
-        var basePath = Console.ReadLine()?.Trim();
-        if (string.IsNullOrWhiteSpace(basePath))
+        var basePath = AnsiConsole.Prompt(new TextPrompt<string>("Enter install location for the starter project (e.g. C:\\Modding):"));
+        if (string.IsNullOrWhiteSpace(basePath?.Trim()))
         {
-            Console.WriteLine("No path entered. Aborted.");
+            AnsiConsole.MarkupLine("[red]No path entered. Aborted.[/]");
             return;
         }
+        basePath = basePath!.Trim();
         if (!Directory.Exists(basePath))
         {
             try
@@ -47,7 +48,7 @@ public class StarterProjectService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Could not create directory: {ex.Message}");
+                AnsiConsole.MarkupLineInterpolated($"[red]Could not create directory: {Markup.Escape(ex.Message)}[/]");
                 return;
             }
         }
@@ -58,8 +59,8 @@ public class StarterProjectService
             var hasGit = Directory.Exists(Path.Combine(targetPath, ".git"));
             if (hasGit)
             {
-                Console.WriteLine($"Directory already exists and appears to be a git clone: {targetPath}");
-                Console.WriteLine("Choose a different path or remove the existing folder.");
+                AnsiConsole.MarkupLineInterpolated($"[yellow]Directory already exists and appears to be a git clone: {Markup.Escape(targetPath)}[/]");
+                AnsiConsole.MarkupLine("[yellow]Choose a different path or remove the existing folder.[/]");
                 return;
             }
         }
@@ -67,44 +68,45 @@ public class StarterProjectService
         var gitPath = GetGitPath();
         if (string.IsNullOrEmpty(gitPath))
         {
-            Console.WriteLine("Git was not found on PATH.");
-            Console.Write("Install Git automatically? (y/n): ");
-            var install = Console.ReadLine()?.Trim().ToUpperInvariant();
-            if (install != "Y" && install != "YES")
+            AnsiConsole.MarkupLine("[yellow]Git was not found on PATH.[/]");
+            var install = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                .Title("Install Git automatically?")
+                .AddChoices("Yes", "No"));
+            if (install != "Yes")
             {
-                Console.WriteLine("Please install Git from https://git-scm.com/download/win and ensure it is in your PATH.");
+                AnsiConsole.MarkupLine("[yellow]Please install Git from [link=https://git-scm.com/download/win]git-scm.com[/] and ensure it is in your PATH.[/]");
                 return;
             }
             var installed = await InstallGitAsync();
             if (!installed)
             {
-                Console.WriteLine("Git install failed or was cancelled. Please install Git manually and run this option again.");
+                AnsiConsole.MarkupLine("[red]Git install failed or was cancelled. Please install Git manually and run this option again.[/]");
                 return;
             }
             gitPath = GetGitPath();
             if (string.IsNullOrEmpty(gitPath))
             {
-                Console.WriteLine("Git was installed but could not be found. Try opening a new terminal or run this option again.");
+                AnsiConsole.MarkupLine("[yellow]Git was installed but could not be found. Try opening a new terminal or run this option again.[/]");
                 return;
             }
         }
 
-        Console.WriteLine($"Cloning {_options.RepositoryUrl} (branch: {_options.Branch}) to {targetPath}...");
+        AnsiConsole.MarkupLineInterpolated($"[dim]Cloning {Markup.Escape(_options.RepositoryUrl)} (branch: {Markup.Escape(_options.Branch)}) to {Markup.Escape(targetPath)}...[/]");
         var args = $"clone --branch \"{_options.Branch}\" \"{_options.RepositoryUrl}\" \"{targetPath}\"";
         var result = await _processRunner.RunAsync(gitPath, args, null, waitForExit: true);
 
         if (result.ExitCode != 0)
         {
-            Console.WriteLine("Clone failed.");
+            AnsiConsole.MarkupLine("[red]Clone failed.[/]");
             if (!string.IsNullOrEmpty(result.StdError))
-                Console.WriteLine(result.StdError);
+                AnsiConsole.WriteLine(result.StdError);
             if (!string.IsNullOrEmpty(result.StdOut))
-                Console.WriteLine(result.StdOut);
+                AnsiConsole.WriteLine(result.StdOut);
             return;
         }
 
         SmehState.SetLastClonePath(targetPath);
-        Console.WriteLine($"Successfully cloned to {targetPath}");
+        AnsiConsole.MarkupLineInterpolated($"[green]Successfully cloned to {Markup.Escape(targetPath)}[/]");
     }
 
     private static string? GetGitPath()
@@ -135,11 +137,11 @@ public class StarterProjectService
     private async Task<bool> InstallGitAsync()
     {
         const string repo = "git-for-windows/git";
-        Console.WriteLine("Fetching Git for Windows latest release...");
+        AnsiConsole.MarkupLine("[dim]Fetching Git for Windows latest release...[/]");
         using var response = await HttpClient.GetAsync($"https://api.github.com/repos/{repo}/releases/latest");
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine($"Failed to get release info: {response.StatusCode}");
+            AnsiConsole.MarkupLineInterpolated($"[red]Failed to get release info: {response.StatusCode}[/]");
             return false;
         }
         var json = await response.Content.ReadAsStringAsync();
@@ -159,13 +161,13 @@ public class StarterProjectService
         }
         if (string.IsNullOrEmpty(downloadUrl) || string.IsNullOrEmpty(assetName))
         {
-            Console.WriteLine("No 64-bit Git installer found in release.");
+            AnsiConsole.MarkupLine("[red]No 64-bit Git installer found in release.[/]");
             return false;
         }
         var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "GitInstall");
         Directory.CreateDirectory(tempDir);
         var installerPath = Path.Combine(tempDir, assetName);
-        Console.WriteLine("Downloading Git installer...");
+        AnsiConsole.MarkupLine("[dim]Downloading Git installer...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Git"));
         try
         {
@@ -173,18 +175,18 @@ public class StarterProjectService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Download failed: {ex.Message}");
+            AnsiConsole.MarkupLineInterpolated($"[red]Download failed: {Markup.Escape(ex.Message)}[/]");
             return false;
         }
         ConsoleProgressBar.Clear();
-        Console.WriteLine("Installing Git (this may take a minute)...");
+        AnsiConsole.MarkupLine("[dim]Installing Git (this may take a minute)...[/]");
         var result = await _processRunner.RunAsync(installerPath, "/VERYSILENT /NORESTART", tempDir, waitForExit: true);
         if (result.ExitCode != 0)
         {
-            Console.WriteLine($"Installer exited with code {result.ExitCode}");
+            AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}[/]");
             return false;
         }
-        Console.WriteLine("Git installed.");
+        AnsiConsole.MarkupLine("[green]Git installed.[/]");
         return true;
     }
 }

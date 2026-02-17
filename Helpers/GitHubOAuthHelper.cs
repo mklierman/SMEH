@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Spectre.Console;
 
 namespace SMEH.Helpers;
 
@@ -36,25 +37,25 @@ public static class GitHubOAuthHelper
 
         if (!TryParseDeviceCodeResponse(codeBody, out var deviceCode, out var userCode, out var verificationUri, out var interval, out var expiresIn))
         {
-            Console.WriteLine($"Unexpected response from GitHub (first 200 chars): {(codeBody.Length > 200 ? codeBody[..200] : codeBody)}");
+            AnsiConsole.MarkupLineInterpolated($"[red]Unexpected response from GitHub (first 200 chars): {Markup.Escape(codeBody.Length > 200 ? codeBody[..200] : codeBody)}[/]");
             return null;
         }
 
         if (string.IsNullOrEmpty(deviceCode) || string.IsNullOrEmpty(userCode))
         {
-            Console.WriteLine("Invalid response from GitHub.");
+            AnsiConsole.MarkupLine("[red]Invalid response from GitHub.[/]");
             return null;
         }
 
         TryCopyToClipboard(userCode!);
 
-        Console.WriteLine("To authorize this app to access the private repository:");
-        Console.WriteLine($"  1. Open in your browser: {verificationUri}");
-        Console.WriteLine("     (Ctrl+Click the URL above to open it in your browser.)");
-        Console.WriteLine($"  2. Enter this code: {userCode} (copied to clipboard)");
-        Console.WriteLine("  3. Sign in with GitHub and authorize the app.");
-        Console.WriteLine();
-        Console.WriteLine("Waiting for you to authorize...");
+        AnsiConsole.MarkupLine("To authorize this app to access the private repository:");
+        AnsiConsole.MarkupLineInterpolated($"  1. Open in your browser: [link={verificationUri}]{Markup.Escape(verificationUri!)}[/]");
+        AnsiConsole.MarkupLine("     (Ctrl+Click the URL above to open it in your browser.)");
+        AnsiConsole.MarkupLineInterpolated($"  2. Enter this code: [bold]{Markup.Escape(userCode!)}[/] (copied to clipboard)");
+        AnsiConsole.MarkupLine("  3. Sign in with GitHub and authorize the app.");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[dim]Waiting for you to authorize...[/]");
 
         // 2. Poll for access token
         var tokenPayload = new Dictionary<string, string>
@@ -77,7 +78,7 @@ public static class GitHubOAuthHelper
 
             if (!TryParseTokenResponse(tokenBody, out var accessToken, out var error))
             {
-                Console.WriteLine($"Unexpected token response (first 200 chars): {(tokenBody.Length > 200 ? tokenBody[..200] : tokenBody)}");
+                AnsiConsole.MarkupLineInterpolated($"[red]Unexpected token response (first 200 chars): {Markup.Escape(tokenBody.Length > 200 ? tokenBody[..200] : tokenBody)}[/]");
                 return null;
             }
             if (accessToken != null)
@@ -90,22 +91,22 @@ public static class GitHubOAuthHelper
             }
             if (error == "expired_token")
             {
-                Console.WriteLine("The authorization code expired. Please run this option again.");
+                AnsiConsole.MarkupLine("[yellow]The authorization code expired. Please run this option again.[/]");
                 return null;
             }
             if (error == "access_denied")
             {
-                Console.WriteLine("Authorization was denied.");
+                AnsiConsole.MarkupLine("[red]Authorization was denied.[/]");
                 return null;
             }
             if (!string.IsNullOrEmpty(error))
             {
-                Console.WriteLine($"Authorization error: {error}");
+                AnsiConsole.MarkupLineInterpolated($"[red]Authorization error: {Markup.Escape(error)}[/]");
                 return null;
             }
         }
 
-        Console.WriteLine("Authorization timed out. Please run this option again.");
+        AnsiConsole.MarkupLine("[yellow]Authorization timed out. Please run this option again.[/]");
         return null;
     }
 

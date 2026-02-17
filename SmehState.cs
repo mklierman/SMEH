@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Win32;
+using Spectre.Console;
 
 namespace SMEH;
 
@@ -234,7 +235,7 @@ public static class SmehState
     {
         var missing = GetFirstMissingStep(requiredSteps, starterProjectPathForWwise, cssUnrealEnginePath);
         if (missing == null) return true;
-        Console.WriteLine($"Please complete the previous step first: {GetStepName(missing.Value)}");
+        AnsiConsole.MarkupLineInterpolated($"[yellow]Please complete the previous step first: {GetStepName(missing.Value)}[/]");
         return false;
     }
 

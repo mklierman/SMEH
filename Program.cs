@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Spectre.Console;
 using SMEH;
 using SMEH.Helpers;
 using SMEH.Services;
@@ -26,20 +27,19 @@ var cleanupService = new CleanupService();
 
 while (true)
 {
-    ShowMenu();
-    var input = Console.ReadLine()?.Trim();
-    if (string.IsNullOrEmpty(input))
+    var choice = ShowMenu();
+    if (choice == null)
         continue;
 
-    if (input == "0" || input.Equals("exit", StringComparison.OrdinalIgnoreCase))
+    if (choice == "0")
     {
-        Console.WriteLine("Goodbye.");
+        AnsiConsole.MarkupLine("[green]Goodbye.[/]");
         return 0;
     }
 
     try
     {
-        var completed = input switch
+        var completed = choice switch
         {
             "1" => await RunOptionAsync("Visual Studio 2022", () => visualStudioService.RunAsync()),
             "2" => await RunOptionAsync("Clang", () => clangService.RunAsync()),
@@ -55,39 +55,44 @@ while (true)
 
         if (!completed)
         {
-            Console.WriteLine("Invalid option. Please choose 1-9 or 0 to exit.");
+            AnsiConsole.MarkupLine("[yellow]Invalid option. Please choose 1-9 or 0 to exit.[/]");
         }
     }
     catch (InvalidProgramException ex)
     {
-        Console.WriteLine($"Error: {ex.Message}");
-        Console.WriteLine("This can sometimes be fixed by rebuilding the application (dotnet build) or using a different .NET runtime.");
+        AnsiConsole.MarkupLineInterpolated($"[bold red]Error:[/] {Markup.Escape(ex.Message)}");
+        AnsiConsole.MarkupLine("This can sometimes be fixed by rebuilding the application (dotnet build) or using a different .NET runtime.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error: {ex.Message}");
+        AnsiConsole.MarkupLineInterpolated($"[bold red]Error:[/] {Markup.Escape(ex.Message)}");
     }
 
-    Console.WriteLine();
-    Console.WriteLine("Press any key to return to menu...");
+    AnsiConsole.WriteLine();
+    AnsiConsole.MarkupLine("[dim]Press any key to return to menu...[/]");
     Console.ReadKey(true);
-    Console.Clear();
+    AnsiConsole.Clear();
 }
 
-static void ShowMenu()
+static string? ShowMenu()
 {
-    Console.WriteLine("=== SMEH Menu ===");
-    Console.WriteLine("1. Visual Studio 2022");
-    Console.WriteLine("2. Clang");
-    Console.WriteLine("3. CSS Unreal Engine");
-    Console.WriteLine("4. Starter Project");
-    Console.WriteLine("5. Wwise");
-    Console.WriteLine("6. Cleanup temp files");
-    Console.WriteLine("7. Generate Visual Studio project files");
-    Console.WriteLine("8. Build Editor");
-    Console.WriteLine("9. Open in Unreal Editor");
-    Console.WriteLine("0. Exit");
-    Console.Write("Select option (0-9): ");
+    AnsiConsole.Write(new Rule("[bold blue]SMEH Menu[/]").RuleStyle("grey"));
+    var choice = AnsiConsole.Prompt(
+        new SelectionPrompt<string>()
+            .Title("Select option:")
+            .AddChoices(
+                "1. Visual Studio 2022",
+                "2. Clang",
+                "3. CSS Unreal Engine",
+                "4. Starter Project",
+                "5. Wwise",
+                "6. Cleanup temp files",
+                "7. Generate Visual Studio project files",
+                "8. Build Editor",
+                "9. Open in Unreal Editor",
+                "0. Exit"
+            ));
+    return choice.Length >= 1 ? choice[0].ToString() : null;
 }
 
 static async Task<bool> RunOptionAsync(string name, Func<Task> run)

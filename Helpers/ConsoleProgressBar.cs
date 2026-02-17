@@ -1,6 +1,6 @@
 namespace SMEH.Helpers;
 
-/// <summary>Renders a simple progress bar to the console for download progress.</summary>
+/// <summary>Renders a simple progress bar to the console for download progress. Uses System.Console for \r overwrite so it works alongside Spectre.Console.</summary>
 public static class ConsoleProgressBar
 {
     private const int BarWidth = 30;

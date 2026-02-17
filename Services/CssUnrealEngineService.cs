@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Spectre.Console;
 using SMEH.Helpers;
 using SMEH;
 
@@ -33,39 +34,41 @@ public class CssUnrealEngineService
         var repo = _options.Repository?.Trim();
         if (string.IsNullOrEmpty(repo))
         {
-            Console.WriteLine("CSS Unreal Engine: set CssUnrealEngine:Repository (e.g. satisfactorymodding/UnrealEngine) or CssUnrealEngine:DownloadUrl in appsettings.json.");
+            AnsiConsole.MarkupLine("[red]CSS Unreal Engine: set CssUnrealEngine:Repository (e.g. satisfactorymodding/UnrealEngine) or CssUnrealEngine:DownloadUrl in appsettings.json.[/]");
             return;
         }
 
         // Custom Unreal Engine is in a private repo; user must complete linking first.
         const string linkingDocsUrl = "https://docs.ficsit.app/satisfactory-modding/latest/Development/BeginnersGuide/dependencies.html#_link_your_github_as_an_epic_games_developer_account";
-        Console.WriteLine("The Custom Unreal Engine is in a private repository. Before continuing you must:");
-        Console.WriteLine("  1. Link your GitHub account as an Epic Games developer account");
-        Console.WriteLine("  2. Link your GitHub account to the Satisfactory Modding repository (Unreal Linker)");
-        Console.WriteLine();
-        Console.WriteLine($"Full instructions: {linkingDocsUrl}");
-        Console.WriteLine();
-        Console.Write("Have you completed the linking process and are you currently logged into GitHub? (y/n): ");
-        var confirm = Console.ReadLine()?.Trim().ToUpperInvariant();
-        if (confirm != "Y" && confirm != "YES")
+        AnsiConsole.MarkupLine("The Custom Unreal Engine is in a [yellow]private repository[/]. Before continuing you must:");
+        AnsiConsole.MarkupLine("  1. Link your GitHub account as an Epic Games developer account");
+        AnsiConsole.MarkupLine("  2. Link your GitHub account to the Satisfactory Modding repository (Unreal Linker)");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLineInterpolated($"Full instructions: [link={linkingDocsUrl}]documentation[/]");
+        AnsiConsole.WriteLine();
+        var confirm = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Have you completed the linking process and are you currently logged into GitHub?")
+            .AddChoices("Yes", "No"));
+        if (confirm != "Yes")
         {
-            Console.WriteLine("Please complete the steps at the link above, then run this option again.");
+            AnsiConsole.MarkupLine("[yellow]Please complete the steps at the link above, then run this option again.[/]");
             return;
         }
 
-        Console.WriteLine();
-        Console.Write("Use a Personal Access Token (PAT) to download here, or download and install the engine manually? (PAT / manual): ");
-        var choice = Console.ReadLine()?.Trim().ToUpperInvariant();
-        if (choice == "MANUAL" || choice == "M")
+        AnsiConsole.WriteLine();
+        var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Use a Personal Access Token (PAT) to download here, or download and install the engine manually?")
+            .AddChoices("PAT", "Manual"));
+        if (choice == "Manual")
         {
             const string releasesUrl = "https://github.com/satisfactorymodding/UnrealEngine/releases/latest";
-            Console.WriteLine();
-            Console.WriteLine("Download and install the engine yourself:");
-            Console.WriteLine($"  1. Open: {releasesUrl}");
-            Console.WriteLine("  2. Download all the .bin files and the .exe installer.");
-            Console.WriteLine("  3. Put them in the same folder.");
-            Console.WriteLine("  4. Run the .exe when everything is downloaded.");
-            Console.WriteLine();
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("Download and install the engine yourself:");
+            AnsiConsole.MarkupLineInterpolated($"  1. Open: [link={releasesUrl}]releases[/]");
+            AnsiConsole.MarkupLine("  2. Download all the .bin files and the .exe installer.");
+            AnsiConsole.MarkupLine("  3. Put them in the same folder.");
+            AnsiConsole.MarkupLine("  4. Run the .exe when everything is downloaded.");
+            AnsiConsole.WriteLine();
             return;
         }
 
@@ -75,24 +78,25 @@ public class CssUnrealEngineService
         {
             token = Environment.GetEnvironmentVariable("SMEH_GITHUB_PAT")?.Trim() ?? _options.GitHubPat?.Trim();
             if (!string.IsNullOrEmpty(token))
-                Console.WriteLine("Using GitHub PAT from config or SMEH_GITHUB_PAT.");
+                AnsiConsole.MarkupLine("[dim]Using GitHub PAT from config or SMEH_GITHUB_PAT.[/]");
         }
 
         if (string.IsNullOrEmpty(token))
         {
-            Console.WriteLine("Enter your GitHub Personal Access Token (PAT with repo scope) and press Enter:");
-            token = Console.ReadLine()?.Trim();
-            if (string.IsNullOrEmpty(token))
+            token = AnsiConsole.Prompt(new TextPrompt<string>("Enter your GitHub Personal Access Token (PAT with repo scope):")
+                .Secret());
+            if (string.IsNullOrEmpty(token?.Trim()))
             {
-                Console.WriteLine("No token entered. Aborted.");
+                AnsiConsole.MarkupLine("[red]No token entered. Aborted.[/]");
                 return;
             }
+            token = token.Trim();
             SmehState.SetGitHubAccessToken(token);
-            Console.WriteLine("PAT saved for future runs.");
+            AnsiConsole.MarkupLine("[green]PAT saved for future runs.[/]");
         }
 
         var releaseUrl = $"https://api.github.com/repos/{repo}/releases/latest";
-        Console.WriteLine("Fetching latest release info...");
+        AnsiConsole.MarkupLine("[dim]Fetching latest release info...[/]");
 
         var authClient = CreateGitHubHttpClient(token);
         try
@@ -111,25 +115,26 @@ public class CssUnrealEngineService
                     if (response.IsSuccessStatusCode)
                     {
                         SmehState.SetGitHubAccessToken(configPat);
-                        Console.WriteLine("Using saved PAT from config; access succeeded.");
+                        AnsiConsole.MarkupLine("[green]Using saved PAT from config; access succeeded.[/]");
                     }
                 }
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine();
-                    Console.WriteLine("Enter your GitHub Personal Access Token (PAT with repo scope) and press Enter:");
-                    var enteredPat = Console.ReadLine()?.Trim();
-                    if (!string.IsNullOrEmpty(enteredPat))
+                    AnsiConsole.WriteLine();
+                    var enteredPat = AnsiConsole.Prompt(new TextPrompt<string>("Enter your GitHub Personal Access Token (PAT with repo scope):")
+                        .Secret()
+                        .AllowEmpty());
+                    if (!string.IsNullOrEmpty(enteredPat?.Trim()))
                     {
                         response.Dispose();
                         authClient.Dispose();
-                        authClient = CreateGitHubHttpClient(enteredPat);
+                        authClient = CreateGitHubHttpClient(enteredPat.Trim());
                         response = await authClient.GetAsync(releaseUrl);
                         if (response.IsSuccessStatusCode)
                         {
-                            SmehState.SetGitHubAccessToken(enteredPat);
-                            Console.WriteLine("PAT saved for future runs.");
+                            SmehState.SetGitHubAccessToken(enteredPat.Trim());
+                            AnsiConsole.MarkupLine("[green]PAT saved for future runs.[/]");
                         }
                     }
                 }
@@ -139,40 +144,40 @@ public class CssUnrealEngineService
             {
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    Console.WriteLine("Could not access the repository (404). This usually means:");
-                    Console.WriteLine("  - The repo is private and no valid GitHub authorization is present.");
-                    Console.WriteLine("  - You have not finished linking your GitHub account (see the link above).");
-                    Console.WriteLine();
-                    Console.WriteLine("To authorize: set CssUnrealEngine:GitHubOAuthClientId for OAuth (device flow), or set CssUnrealEngine:GitHubPat / SMEH_GITHUB_PAT for a PAT with repo scope.");
-                    Console.WriteLine("OAuth App: https://github.com/settings/developers — callback URL http://localhost, enable Device flow.");
-                    Console.WriteLine();
-                    Console.WriteLine("Or download the release files manually in your browser, save the .exe and .bin in one folder, then run the .exe.");
+                    AnsiConsole.MarkupLine("[red]Could not access the repository (404). This usually means:[/]");
+                    AnsiConsole.MarkupLine("  - The repo is private and no valid GitHub authorization is present.");
+                    AnsiConsole.MarkupLine("  - You have not finished linking your GitHub account (see the link above).");
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("To authorize: set [dim]CssUnrealEngine:GitHubOAuthClientId[/] for OAuth (device flow), or [dim]CssUnrealEngine:GitHubPat[/] / [dim]SMEH_GITHUB_PAT[/] for a PAT with repo scope.");
+                    AnsiConsole.MarkupLine("[link=https://github.com/settings/developers]OAuth App[/] — callback URL http://localhost, enable Device flow.");
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("Or download the release files manually in your browser, save the .exe and .bin in one folder, then run the .exe.");
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 {
                     var remaining = response.Headers.TryGetValues("X-RateLimit-Remaining", out var v) ? v.FirstOrDefault() : null;
                     var body = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine("Access to the repository was denied (403 Forbidden).");
+                    AnsiConsole.MarkupLine("[red]Access to the repository was denied (403 Forbidden).[/]");
                     if (remaining == "0" || (body.Length > 0 && body.IndexOf("rate limit", StringComparison.OrdinalIgnoreCase) >= 0))
                     {
-                        Console.WriteLine("GitHub rate limit may be exceeded. Wait a few minutes and try again.");
+                        AnsiConsole.MarkupLine("[yellow]GitHub rate limit may be exceeded. Wait a few minutes and try again.[/]");
                         if (response.Headers.TryGetValues("X-RateLimit-Reset", out var reset) && long.TryParse(reset.FirstOrDefault(), out var resetEpoch))
-                            Console.WriteLine($"Rate limit resets at: {DateTimeOffset.FromUnixTimeSeconds(resetEpoch):u}");
+                            AnsiConsole.MarkupLineInterpolated($"[dim]Rate limit resets at: {DateTimeOffset.FromUnixTimeSeconds(resetEpoch):u}[/]");
                     }
                     else
                     {
-                        Console.WriteLine("If you have already authorized this app for the satisfactorymodding org, 403 can still mean:");
-                        Console.WriteLine("  - Rate limiting (wait and retry), or");
-                        Console.WriteLine("  - The repo or org requires additional approval.");
+                        AnsiConsole.MarkupLine("If you have already authorized this app for the satisfactorymodding org, 403 can still mean:");
+                        AnsiConsole.MarkupLine("  - Rate limiting (wait and retry), or");
+                        AnsiConsole.MarkupLine("  - The repo or org requires additional approval.");
                         if (!string.IsNullOrWhiteSpace(body) && body.Length < 500)
-                            Console.WriteLine($"  GitHub says: {body}");
+                            AnsiConsole.MarkupLineInterpolated($"[dim]GitHub says: {Markup.Escape(body)}[/]");
                     }
-                    Console.WriteLine();
-                    Console.WriteLine("Alternatively, use CssUnrealEngine:DownloadUrl in appsettings.json to point to a direct download.");
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("Alternatively, use [dim]CssUnrealEngine:DownloadUrl[/] in appsettings.json to point to a direct download.");
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to get release: {response.StatusCode}. Check Repository or try DownloadUrl.");
+                    AnsiConsole.MarkupLineInterpolated($"[red]Failed to get release: {response.StatusCode}. Check Repository or try DownloadUrl.[/]");
                 }
                 response.Dispose();
                 return;
@@ -222,7 +227,7 @@ public class CssUnrealEngineService
 
         if (string.IsNullOrEmpty(exeApiUrl) || string.IsNullOrEmpty(exeAsset))
         {
-            Console.WriteLine("No .exe installer found in this release.");
+            AnsiConsole.MarkupLine("[red]No .exe installer found in this release.[/]");
             return false;
         }
 
@@ -232,27 +237,27 @@ public class CssUnrealEngineService
         var ghHeaders = new Dictionary<string, string> { ["Accept"] = "application/octet-stream" };
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p));
 
-        Console.WriteLine("Downloading installer (.exe)...");
+        AnsiConsole.MarkupLine("[dim]Downloading installer (.exe)...[/]");
         var exePath = Path.Combine(installDir, exeAsset);
         await _downloadHelper.DownloadFileAsync(exeApiUrl, exePath, progress, default, authClient, ghHeaders);
         ConsoleProgressBar.Clear();
-        Console.WriteLine();
+        AnsiConsole.WriteLine();
 
         foreach (var (name, apiUrl) in binAssets)
         {
-            Console.WriteLine($"Downloading {name}...");
+            AnsiConsole.MarkupLineInterpolated($"[dim]Downloading {Markup.Escape(name)}...[/]");
             var binPath = Path.Combine(installDir, name);
             await _downloadHelper.DownloadFileAsync(apiUrl, binPath, progress, default, authClient, ghHeaders);
             ConsoleProgressBar.Clear();
-            Console.WriteLine();
+            AnsiConsole.WriteLine();
         }
 
-        Console.WriteLine("All files ready. Running installer...");
+        AnsiConsole.MarkupLine("[dim]All files ready. Running installer...[/]");
         var result = await _processRunner.RunAsync(exePath, null, installDir, waitForExit: true);
         if (result.ExitCode != 0)
-            Console.WriteLine($"Installer exited with code {result.ExitCode}.");
+            AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
         else
-            Console.WriteLine("Installation finished successfully.");
+            AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
         return true;
     }
 
@@ -266,34 +271,34 @@ public class CssUnrealEngineService
             fileName = "css-unreal-engine.zip";
         var destPath = Path.Combine(tempDir, fileName);
 
-        Console.WriteLine("Downloading CSS Unreal Engine...");
+        AnsiConsole.MarkupLine("[dim]Downloading CSS Unreal Engine...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "CSS UE"));
         await _downloadHelper.DownloadFileAsync(downloadUrl, destPath, progress);
         ConsoleProgressBar.Clear();
-        Console.WriteLine("Download complete.");
+        AnsiConsole.MarkupLine("[green]Download complete.[/]");
 
         var isZip = fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
         if (isZip)
         {
             var extractDir = Path.Combine(tempDir, "extracted");
             Directory.CreateDirectory(extractDir);
-            Console.WriteLine("Extracting...");
+            AnsiConsole.MarkupLine("[dim]Extracting...[/]");
             System.IO.Compression.ZipFile.ExtractToDirectory(destPath, extractDir, overwriteFiles: true);
-            Console.WriteLine($"Extracted to: {extractDir}");
+            AnsiConsole.MarkupLineInterpolated($"[dim]Extracted to: {Markup.Escape(extractDir)}[/]");
         }
         else if (fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine("Running installer...");
+            AnsiConsole.MarkupLine("[dim]Running installer...[/]");
             var result = await _processRunner.RunAsync(destPath, null, tempDir, waitForExit: true);
             if (result.ExitCode != 0)
-                Console.WriteLine($"Installer exited with code {result.ExitCode}.");
+                AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
             else
-                Console.WriteLine("Installation finished successfully.");
+                AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
         }
         else
         {
-            Console.WriteLine($"Downloaded to: {destPath}");
-            Console.WriteLine("Unknown file type. Extract or run manually as needed.");
+            AnsiConsole.MarkupLineInterpolated($"[dim]Downloaded to: {Markup.Escape(destPath)}[/]");
+            AnsiConsole.MarkupLine("[yellow]Unknown file type. Extract or run manually as needed.[/]");
         }
     }
 
