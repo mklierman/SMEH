@@ -27,17 +27,17 @@ public class StarterProjectService
         _processRunner = processRunner;
     }
 
-    public async Task RunAsync()
+    public async Task<bool> RunAsync()
     {
         var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine }, cssUnrealEnginePath: string.IsNullOrEmpty(cssPath) ? null : cssPath))
-            return;
+            return false;
 
         var basePath = AnsiConsole.Prompt(new TextPrompt<string>("Enter install location for the starter project (e.g. C:\\Modding):"));
         if (string.IsNullOrWhiteSpace(basePath?.Trim()))
         {
             AnsiConsole.MarkupLine("[red]No path entered. Aborted.[/]");
-            return;
+            return false;
         }
         basePath = basePath!.Trim();
         if (!Directory.Exists(basePath))
@@ -49,7 +49,7 @@ public class StarterProjectService
             catch (Exception ex)
             {
                 AnsiConsole.MarkupLineInterpolated($"[red]Could not create directory: {Markup.Escape(ex.Message)}[/]");
-                return;
+                return false;
             }
         }
         var targetPath = Path.Combine(basePath, "SatisfactoryModLoader");
@@ -61,7 +61,7 @@ public class StarterProjectService
             {
                 AnsiConsole.MarkupLineInterpolated($"[yellow]Directory already exists and appears to be a git clone: {Markup.Escape(targetPath)}[/]");
                 AnsiConsole.MarkupLine("[yellow]Choose a different path or remove the existing folder.[/]");
-                return;
+                return false;
             }
         }
 
@@ -71,23 +71,24 @@ public class StarterProjectService
             AnsiConsole.MarkupLine("[yellow]Git was not found on PATH.[/]");
             var install = AnsiConsole.Prompt(new SelectionPrompt<string>()
                 .Title("Install Git automatically?")
+                .HighlightStyle(SmehTheme.AccentStyle)
                 .AddChoices("Yes", "No"));
             if (install != "Yes")
             {
                 AnsiConsole.MarkupLine("[yellow]Please install Git from [link=https://git-scm.com/download/win]git-scm.com[/] and ensure it is in your PATH.[/]");
-                return;
+                return false;
             }
             var installed = await InstallGitAsync();
             if (!installed)
             {
                 AnsiConsole.MarkupLine("[red]Git install failed or was cancelled. Please install Git manually and run this option again.[/]");
-                return;
+                return false;
             }
             gitPath = GetGitPath();
             if (string.IsNullOrEmpty(gitPath))
             {
                 AnsiConsole.MarkupLine("[yellow]Git was installed but could not be found. Try opening a new terminal or run this option again.[/]");
-                return;
+                return false;
             }
         }
 
@@ -102,11 +103,12 @@ public class StarterProjectService
                 AnsiConsole.WriteLine(result.StdError);
             if (!string.IsNullOrEmpty(result.StdOut))
                 AnsiConsole.WriteLine(result.StdOut);
-            return;
+            return false;
         }
 
         SmehState.SetLastClonePath(targetPath);
         AnsiConsole.MarkupLineInterpolated($"[green]Successfully cloned to {Markup.Escape(targetPath)}[/]");
+        return true;
     }
 
     private static string? GetGitPath()

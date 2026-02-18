@@ -26,13 +26,13 @@ public class WwiseCliService
         _processRunner = processRunner;
     }
 
-    public async Task RunAsync()
+    public async Task<bool> RunAsync()
     {
         var repo = _options.Repository.Trim();
         if (string.IsNullOrEmpty(repo))
         {
-            AnsiConsole.MarkupLine("[red]WwiseCli:Repository is not configured in appsettings.json.[/]");
-            return;
+            AnsiConsole.MarkupLine("[red]WwiseCli Repository is not configured.[/]");
+            return false;
         }
 
         string releaseUrl = _options.UseLatest
@@ -43,8 +43,8 @@ public class WwiseCliService
         using var response = await HttpClient.GetAsync(releaseUrl);
         if (!response.IsSuccessStatusCode)
         {
-            AnsiConsole.MarkupLineInterpolated($"[red]Failed to get release: {response.StatusCode}. Check Repository and ReleaseTag in appsettings.json.[/]");
-            return;
+            AnsiConsole.MarkupLineInterpolated($"[red]Failed to get release: {response.StatusCode}. Check Repository and ReleaseTag.[/]");
+            return false;
         }
 
         var json = await response.Content.ReadAsStringAsync();
@@ -67,7 +67,7 @@ public class WwiseCliService
         if (downloadUrl == null || assetName == null)
         {
             AnsiConsole.MarkupLine("[red]No Windows executable or zip found in this release.[/]");
-            return;
+            return false;
         }
 
         var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "WwiseCLI");
@@ -102,18 +102,21 @@ public class WwiseCliService
         // Resolve starter project path (must be cloned first for integrate-ue)
         var projectDir = ResolveStarterProjectPath();
         if (string.IsNullOrEmpty(projectDir))
-            return;
+            return false;
 
         var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine, SmehState.StepStarterProject }, projectDir, string.IsNullOrEmpty(cssPath) ? null : cssPath))
-            return;
+            return false;
 
         var uprojectPath = Path.Combine(projectDir, "FactoryGame.uproject");
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
-            AnsiConsole.MarkupLine("[yellow]Ensure the Starter Project (option 4) is cloned and contains FactoryGame.uproject.[/]");
-            return;
+            if (!TryPromptProjectPath(out var promptedDir, out var promptedUproject))
+                return false;
+            projectDir = promptedDir!;
+            uprojectPath = promptedUproject!;
+            SmehState.SetLastClonePath(projectDir);
         }
 
         // 1. Download SDK
@@ -135,7 +138,7 @@ public class WwiseCliService
                 AnsiConsole.WriteLine(downloadResult.StdError);
             if (!string.IsNullOrEmpty(downloadResult.StdOut))
                 AnsiConsole.WriteLine(downloadResult.StdOut);
-            return;
+            return false;
         }
         AnsiConsole.MarkupLine("[green]SDK download completed.[/]");
 
@@ -155,9 +158,10 @@ public class WwiseCliService
                 AnsiConsole.WriteLine(integrateResult.StdError);
             if (!string.IsNullOrEmpty(integrateResult.StdOut))
                 AnsiConsole.WriteLine(integrateResult.StdOut);
-            return;
+            return false;
         }
         AnsiConsole.MarkupLine("[green]Wwise integration completed successfully.[/]");
+        return true;
     }
 
     private string? ResolveStarterProjectPath()
@@ -171,7 +175,7 @@ public class WwiseCliService
             return path;
 
         AnsiConsole.MarkupLine("[yellow]Starter project path not found. Run option 4 (Starter Project) first to clone the repo,[/]");
-        AnsiConsole.MarkupLine("[yellow]or set WwiseCli:StarterProjectPath in appsettings.json to the clone directory.[/]");
+        AnsiConsole.MarkupLine("[yellow]or enter the clone directory when prompted.[/]");
         path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to SatisfactoryModLoader clone (or press Enter to cancel):")
             .AllowEmpty());
         if (string.IsNullOrEmpty(path?.Trim()))
@@ -187,5 +191,36 @@ public class WwiseCliService
         }
         SmehState.SetLastClonePath(path);
         return path;
+    }
+
+    private static bool TryPromptProjectPath(out string? projectDir, out string? uprojectPath)
+    {
+        projectDir = null;
+        uprojectPath = null;
+        var path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to project folder or to FactoryGame.uproject (or press Enter to cancel):")
+            .AllowEmpty());
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            return false;
+        }
+        path = path!.Trim();
+        if (File.Exists(path) && path.EndsWith("FactoryGame.uproject", StringComparison.OrdinalIgnoreCase))
+        {
+            projectDir = Path.GetDirectoryName(path);
+            uprojectPath = path;
+            return !string.IsNullOrEmpty(projectDir);
+        }
+        if (Directory.Exists(path))
+        {
+            uprojectPath = Path.Combine(path, "FactoryGame.uproject");
+            if (File.Exists(uprojectPath))
+            {
+                projectDir = path;
+                return true;
+            }
+        }
+        AnsiConsole.MarkupLine("[red]FactoryGame.uproject not found at that path.[/]");
+        return false;
     }
 }

@@ -20,7 +20,7 @@ public class VisualStudioInstallerService
     /// <summary>Official Community Edition bootstrapper (free). Used so we always install Community regardless of config.</summary>
     private const string CommunityBootstrapperUrl = "https://aka.ms/vs/17/release/vs_community.exe";
 
-    public async Task RunAsync()
+    public async Task<bool> RunAsync()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "VS2022");
         Directory.CreateDirectory(tempDir);
@@ -73,9 +73,10 @@ public class VisualStudioInstallerService
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
             if (!string.IsNullOrEmpty(result.StdError))
                 AnsiConsole.WriteLine("Stderr: " + result.StdError);
-            return;
+            return false;
         }
 
         AnsiConsole.MarkupLine("[green]Visual Studio 2022 installation finished successfully.[/]");
+        return true;
     }
 }

@@ -19,23 +19,39 @@ public class CssUnrealEngineService
         _processRunner = processRunner;
     }
 
-    public async Task RunAsync()
+    public async Task<bool> RunAsync()
     {
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang }))
-            return;
+            return false;
 
         var downloadUrl = _options.DownloadUrl?.Trim();
-        if (!string.IsNullOrEmpty(downloadUrl))
+        var repo = _options.Repository?.Trim();
+        if (string.IsNullOrEmpty(downloadUrl) && string.IsNullOrEmpty(repo))
         {
-            await RunLegacyDownloadAsync(downloadUrl);
-            return;
+            AnsiConsole.MarkupLine("[red]CSS Unreal Engine: Repository or DownloadUrl is not set.[/]");
+            var input = AnsiConsole.Prompt(new TextPrompt<string>("Enter GitHub repository (e.g. satisfactorymodding/UnrealEngine) or direct download URL (or press Enter to cancel):")
+                .AllowEmpty());
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+                return false;
+            }
+            input = input!.Trim();
+            if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                downloadUrl = input;
+            else
+                repo = input;
         }
 
-        var repo = _options.Repository?.Trim();
+        if (!string.IsNullOrEmpty(downloadUrl))
+        {
+            return await RunLegacyDownloadAsync(downloadUrl);
+        }
+
         if (string.IsNullOrEmpty(repo))
         {
-            AnsiConsole.MarkupLine("[red]CSS Unreal Engine: set CssUnrealEngine:Repository (e.g. satisfactorymodding/UnrealEngine) or CssUnrealEngine:DownloadUrl in appsettings.json.[/]");
-            return;
+            AnsiConsole.MarkupLine("[red]Repository is required.[/]");
+            return false;
         }
 
         // Custom Unreal Engine is in a private repo; user must complete linking first.
@@ -47,17 +63,19 @@ public class CssUnrealEngineService
         AnsiConsole.MarkupLineInterpolated($"Full instructions: [link={linkingDocsUrl}]documentation[/]");
         AnsiConsole.WriteLine();
         var confirm = AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("Have you completed the linking process and are you currently logged into GitHub?")
+            .Title("Have you completed the linking process?")
+            .HighlightStyle(SmehTheme.AccentStyle)
             .AddChoices("Yes", "No"));
         if (confirm != "Yes")
         {
             AnsiConsole.MarkupLine("[yellow]Please complete the steps at the link above, then run this option again.[/]");
-            return;
+            return false;
         }
 
         AnsiConsole.WriteLine();
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Use a Personal Access Token (PAT) to download here, or download and install the engine manually?")
+            .HighlightStyle(SmehTheme.AccentStyle)
             .AddChoices("PAT", "Manual"));
         if (choice == "Manual")
         {
@@ -65,11 +83,18 @@ public class CssUnrealEngineService
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("Download and install the engine yourself:");
             AnsiConsole.MarkupLineInterpolated($"  1. Open: [link={releasesUrl}]releases[/]");
-            AnsiConsole.MarkupLine("  2. Download all the .bin files and the .exe installer.");
-            AnsiConsole.MarkupLine("  3. Put them in the same folder.");
-            AnsiConsole.MarkupLine("  4. Run the .exe when everything is downloaded.");
+            AnsiConsole.MarkupLine("  2. Download the .exe and .bin files (e.g. UnrealEngine-CSS-Editor-Win64.exe and its .bin parts).");
             AnsiConsole.WriteLine();
-            return;
+            var runNow = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                .Title("Have you downloaded all the files? Do you want to run the installer?")
+                .HighlightStyle(SmehTheme.AccentStyle)
+                .AddChoices("Yes", "No"));
+            if (runNow == "No")
+                return false;
+            var installFolder = GetManualInstallFolder();
+            if (string.IsNullOrEmpty(installFolder))
+                return false;
+            return await RunInstallerFromFolderAsync(installFolder);
         }
 
         // PAT path: resolve token from saved, then config/env, then prompt (OAuth code left in repo for possible future use)
@@ -88,7 +113,7 @@ public class CssUnrealEngineService
             if (string.IsNullOrEmpty(token?.Trim()))
             {
                 AnsiConsole.MarkupLine("[red]No token entered. Aborted.[/]");
-                return;
+                return false;
             }
             token = token.Trim();
             SmehState.SetGitHubAccessToken(token);
@@ -148,7 +173,7 @@ public class CssUnrealEngineService
                     AnsiConsole.MarkupLine("  - The repo is private and no valid GitHub authorization is present.");
                     AnsiConsole.MarkupLine("  - You have not finished linking your GitHub account (see the link above).");
                     AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine("To authorize: set [dim]CssUnrealEngine:GitHubOAuthClientId[/] for OAuth (device flow), or [dim]CssUnrealEngine:GitHubPat[/] / [dim]SMEH_GITHUB_PAT[/] for a PAT with repo scope.");
+                    AnsiConsole.MarkupLine("To authorize: use a GitHub PAT (env [dim]SMEH_GITHUB_PAT[/]) or enter it when prompted.");
                     AnsiConsole.MarkupLine("[link=https://github.com/settings/developers]OAuth App[/] — callback URL http://localhost, enable Device flow.");
                     AnsiConsole.WriteLine();
                     AnsiConsole.MarkupLine("Or download the release files manually in your browser, save the .exe and .bin in one folder, then run the .exe.");
@@ -173,19 +198,19 @@ public class CssUnrealEngineService
                             AnsiConsole.MarkupLineInterpolated($"[dim]GitHub says: {Markup.Escape(body)}[/]");
                     }
                     AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine("Alternatively, use [dim]CssUnrealEngine:DownloadUrl[/] in appsettings.json to point to a direct download.");
+                    AnsiConsole.MarkupLine("Alternatively, use a direct download URL for the engine.");
                 }
                 else
                 {
                     AnsiConsole.MarkupLineInterpolated($"[red]Failed to get release: {response.StatusCode}. Check Repository or try DownloadUrl.[/]");
                 }
                 response.Dispose();
-                return;
+                return false;
             }
 
             var json = await response.Content.ReadAsStringAsync();
             response.Dispose();
-            await DownloadAndInstallFromReleaseJson(authClient, json);
+            return await DownloadAndInstallFromReleaseJson(authClient, json);
         }
         finally
         {
@@ -258,10 +283,10 @@ public class CssUnrealEngineService
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
         else
             AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
-        return true;
+        return result.ExitCode == 0;
     }
 
-    private async Task RunLegacyDownloadAsync(string downloadUrl)
+    private async Task<bool> RunLegacyDownloadAsync(string downloadUrl)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "CssUnrealEngine");
         Directory.CreateDirectory(tempDir);
@@ -285,8 +310,9 @@ public class CssUnrealEngineService
             AnsiConsole.MarkupLine("[dim]Extracting...[/]");
             System.IO.Compression.ZipFile.ExtractToDirectory(destPath, extractDir, overwriteFiles: true);
             AnsiConsole.MarkupLineInterpolated($"[dim]Extracted to: {Markup.Escape(extractDir)}[/]");
+            return false; // User may need to run installer manually
         }
-        else if (fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        if (fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
             AnsiConsole.MarkupLine("[dim]Running installer...[/]");
             var result = await _processRunner.RunAsync(destPath, null, tempDir, waitForExit: true);
@@ -294,12 +320,79 @@ public class CssUnrealEngineService
                 AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
             else
                 AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
+            return result.ExitCode == 0;
         }
-        else
+        AnsiConsole.MarkupLineInterpolated($"[dim]Downloaded to: {Markup.Escape(destPath)}[/]");
+        AnsiConsole.MarkupLine("[yellow]Unknown file type. Extract or run manually as needed.[/]");
+        return false;
+    }
+
+    private const string ManualInstallExe = "UnrealEngine-CSS-Editor-Win64.exe";
+    private const string ManualInstallBin1 = "UnrealEngine-CSS-Editor-Win64-1.bin";
+    private const string ManualInstallBin2 = "UnrealEngine-CSS-Editor-Win64-2.bin";
+
+    /// <summary>Returns true if folder contains the exact exe and both .bin files from the manual install set.</summary>
+    private static bool HasManualInstallFiles(string folder, out string? exePath)
+    {
+        exePath = null;
+        var exe = Path.Combine(folder, ManualInstallExe);
+        var bin1 = Path.Combine(folder, ManualInstallBin1);
+        var bin2 = Path.Combine(folder, ManualInstallBin2);
+        if (!File.Exists(exe) || !File.Exists(bin1) || !File.Exists(bin2))
+            return false;
+        exePath = exe;
+        return true;
+    }
+
+    /// <summary>Gets the folder containing the manually downloaded installer: tries Downloads first, then prompts.</summary>
+    private static string? GetManualInstallFolder()
+    {
+        var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        if (Directory.Exists(downloadsPath) && HasManualInstallFiles(downloadsPath, out _))
         {
-            AnsiConsole.MarkupLineInterpolated($"[dim]Downloaded to: {Markup.Escape(destPath)}[/]");
-            AnsiConsole.MarkupLine("[yellow]Unknown file type. Extract or run manually as needed.[/]");
+            var useDownloads = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                .Title($"Found installer in Downloads folder. Use [dim]{Markup.Escape(downloadsPath)}[/]?")
+                .HighlightStyle(SmehTheme.AccentStyle)
+                .AddChoices("Yes", "No, choose another folder"));
+            if (useDownloads == "Yes")
+                return downloadsPath;
         }
+
+        var folder = AnsiConsole.Prompt(new TextPrompt<string>("Files not found in Downloads. Enter the folder path where you saved the UnrealEngine-CSS-Editor-Win64 files:")
+            .AllowEmpty());
+        if (string.IsNullOrWhiteSpace(folder))
+        {
+            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            return null;
+        }
+        folder = folder.Trim();
+        if (!Directory.Exists(folder))
+        {
+            AnsiConsole.MarkupLineInterpolated($"[red]Folder not found: {Markup.Escape(folder)}[/]");
+            return null;
+        }
+        if (!HasManualInstallFiles(folder, out _))
+        {
+            AnsiConsole.MarkupLine("[red]Folder must contain exactly: [dim]UnrealEngine-CSS-Editor-Win64.exe[/], [dim]UnrealEngine-CSS-Editor-Win64-1.bin[/], and [dim]UnrealEngine-CSS-Editor-Win64-2.bin[/].[/]");
+            return null;
+        }
+        return folder;
+    }
+
+    private async Task<bool> RunInstallerFromFolderAsync(string folder)
+    {
+        if (!HasManualInstallFiles(folder, out var exePath) || exePath == null)
+        {
+            AnsiConsole.MarkupLine("[red]Installer files not found.[/]");
+            return false;
+        }
+        AnsiConsole.MarkupLineInterpolated($"[dim]Running installer: {Markup.Escape(ManualInstallExe)}[/]");
+        var result = await _processRunner.RunAsync(exePath, null, folder, waitForExit: true);
+        if (result.ExitCode != 0)
+            AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
+        else
+            AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
+        return result.ExitCode == 0;
     }
 
     private static HttpClient CreateGitHubHttpClient(string? token)

@@ -15,18 +15,23 @@ public class OpenEditorService
         _wwiseCliOptions = wwiseCliOptions;
     }
 
-    public Task RunAsync()
+    public Task<bool> RunAsync()
     {
         var projectDir = ResolveStarterProjectPath();
         if (string.IsNullOrEmpty(projectDir))
-            return Task.CompletedTask;
+            return Task.FromResult(false);
 
         var uprojectPath = Path.Combine(projectDir, "FactoryGame.uproject");
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
-            AnsiConsole.MarkupLine("[yellow]Ensure the Starter Project (option 4) is cloned and contains FactoryGame.uproject.[/]");
-            return Task.CompletedTask;
+            if (!TryPromptProjectPath(out var promptedDir, out var promptedUproject))
+            {
+                return Task.FromResult(false);
+            }
+            projectDir = promptedDir!;
+            uprojectPath = promptedUproject!;
+            SmehState.SetLastClonePath(projectDir);
         }
 
         var fullUprojectPath = Path.GetFullPath(uprojectPath);
@@ -39,15 +44,18 @@ public class OpenEditorService
                 UseShellExecute = true
             });
             if (process != null)
+            {
                 AnsiConsole.MarkupLine("[green]Project is opening. You can return to the menu.[/]");
-            else
-                AnsiConsole.MarkupLine("[red]Failed to open project.[/]");
+                return Task.FromResult(true);
+            }
+            AnsiConsole.MarkupLine("[red]Failed to open project.[/]");
+            return Task.FromResult(false);
         }
         catch (Exception ex)
         {
             AnsiConsole.MarkupLineInterpolated($"[red]Failed to open project: {Markup.Escape(ex.Message)}[/]");
+            return Task.FromResult(false);
         }
-        return Task.CompletedTask;
     }
 
     private string? ResolveStarterProjectPath()
@@ -61,7 +69,7 @@ public class OpenEditorService
             return path;
 
         AnsiConsole.MarkupLine("[yellow]Starter project path not found. Run option 4 (Starter Project) first to clone the repo,[/]");
-        AnsiConsole.MarkupLine("[yellow]or set WwiseCli:StarterProjectPath in appsettings.json to the clone directory.[/]");
+        AnsiConsole.MarkupLine("[yellow]or enter the clone directory when prompted.[/]");
         path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to SatisfactoryModLoader clone (or press Enter to cancel):")
             .AllowEmpty());
         if (string.IsNullOrEmpty(path?.Trim()))
@@ -77,5 +85,36 @@ public class OpenEditorService
         }
         SmehState.SetLastClonePath(path);
         return path;
+    }
+
+    private static bool TryPromptProjectPath(out string? projectDir, out string? uprojectPath)
+    {
+        projectDir = null;
+        uprojectPath = null;
+        var path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to project folder or to FactoryGame.uproject (or press Enter to cancel):")
+            .AllowEmpty());
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            return false;
+        }
+        path = path!.Trim();
+        if (File.Exists(path) && path.EndsWith("FactoryGame.uproject", StringComparison.OrdinalIgnoreCase))
+        {
+            projectDir = Path.GetDirectoryName(path);
+            uprojectPath = path;
+            return !string.IsNullOrEmpty(projectDir);
+        }
+        if (Directory.Exists(path))
+        {
+            uprojectPath = Path.Combine(path, "FactoryGame.uproject");
+            if (File.Exists(uprojectPath))
+            {
+                projectDir = path;
+                return true;
+            }
+        }
+        AnsiConsole.MarkupLine("[red]FactoryGame.uproject not found at that path.[/]");
+        return false;
     }
 }

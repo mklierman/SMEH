@@ -17,25 +17,46 @@ public class ClangInstallerService
         _processRunner = processRunner;
     }
 
-    public async Task RunAsync()
+    public async Task<bool> RunAsync()
     {
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio }))
-            return;
+            return false;
 
-        if (string.IsNullOrWhiteSpace(_options.InstallerUrl))
+        var installerUrlOrPath = _options.InstallerUrl?.Trim();
+        if (string.IsNullOrWhiteSpace(installerUrlOrPath))
         {
-            AnsiConsole.MarkupLine("[red]Clang installer URL is not configured in appsettings.json.[/]");
-            return;
+            AnsiConsole.MarkupLine("[red]Clang installer URL is not configured.[/]");
+            installerUrlOrPath = AnsiConsole.Prompt(new TextPrompt<string>("Enter Clang installer URL or path to local .exe (or press Enter to cancel):")
+                .AllowEmpty());
+            if (string.IsNullOrWhiteSpace(installerUrlOrPath))
+            {
+                AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+                return false;
+            }
+            installerUrlOrPath = installerUrlOrPath!.Trim();
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "Clang");
-        var installerPath = Path.Combine(tempDir, "v22_clang-16.0.6-centos7.exe");
-
-        AnsiConsole.MarkupLine("[dim]Downloading Clang installer...[/]");
-        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Clang"));
-        await _downloadHelper.DownloadFileAsync(_options.InstallerUrl, installerPath, progress);
-        ConsoleProgressBar.Clear();
-        AnsiConsole.MarkupLine("[green]Download complete. Running installer...[/]");
+        string installerPath;
+        if (installerUrlOrPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || installerUrlOrPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "Clang");
+            installerPath = Path.Combine(tempDir, "v22_clang-16.0.6-centos7.exe");
+            AnsiConsole.MarkupLine("[dim]Downloading Clang installer...[/]");
+            var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Clang"));
+            await _downloadHelper.DownloadFileAsync(installerUrlOrPath, installerPath, progress);
+            ConsoleProgressBar.Clear();
+            AnsiConsole.MarkupLine("[green]Download complete. Running installer...[/]");
+        }
+        else
+        {
+            if (!File.Exists(installerUrlOrPath))
+            {
+                AnsiConsole.MarkupLineInterpolated($"[red]File not found: {Markup.Escape(installerUrlOrPath)}[/]");
+                return false;
+            }
+            installerPath = installerUrlOrPath;
+            AnsiConsole.MarkupLine("[green]Running local installer...[/]");
+        }
 
         var result = await _processRunner.RunAsync(installerPath, null, null, waitForExit: true);
         if (result.ExitCode != 0 && !string.IsNullOrEmpty(result.StdError))
@@ -44,17 +65,22 @@ public class ClangInstallerService
         if (result.ExitCode == 0)
         {
             AnsiConsole.MarkupLine("[green]Clang installer finished successfully.[/]");
-            try
+            var isDownloaded = installerUrlOrPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || installerUrlOrPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+            if (isDownloaded)
             {
-                if (File.Exists(installerPath))
-                    File.Delete(installerPath);
-            }
-            catch
-            {
-                AnsiConsole.MarkupLineInterpolated($"[yellow]Could not delete downloaded installer. You may remove it manually: {Markup.Escape(installerPath)}[/]");
+                try
+                {
+                    if (File.Exists(installerPath))
+                        File.Delete(installerPath);
+                }
+                catch
+                {
+                    AnsiConsole.MarkupLineInterpolated($"[yellow]Could not delete downloaded installer. You may remove it manually: {Markup.Escape(installerPath)}[/]");
+                }
             }
         }
         else
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
+        return result.ExitCode == 0;
     }
 }
