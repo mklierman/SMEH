@@ -58,7 +58,7 @@ while (true)
             "4" => await RunOptionAsync("Cloning Starter Project", () => starterProjectService.RunAsync()),
             "5" => await RunOptionAsync("Setting up Wwise-CLI", () => wwiseCliService.RunAsync()),
             "6" => await RunOptionAsync("Generating Visual Studio project files...", () => generateVsProjectService.RunAsync()),
-            "7" => await RunOptionAsync("Building Editor...", () => buildEditorService.RunAsync()),
+            "7" => await RunOptionAsync("Building Editor", () => buildEditorService.RunAsync(), useDynamicDisplay: true),
             "8" => await RunOptionAsync("Opening project", () => openEditorService.RunAsync()),
             "9" => await RunOptionAsync("Cleanup temp files", () => cleanupService.RunAsync()),
             _ => false
@@ -119,8 +119,11 @@ static string? ShowMenu(SmehOptions options)
     return choice.Length >= 1 ? choice[0].ToString() : null;
 }
 
-static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> run)
+static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> run, bool useDynamicDisplay = false)
 {
+    // Don't wrap in Status() when the operation uses its own dynamic display (e.g. Progress), to avoid Spectre.Console's "interactive functions concurrently" error.
+    if (useDynamicDisplay)
+        return await run();
     var useSpinner = statusMessage.EndsWith("...", StringComparison.Ordinal);
     if (useSpinner)
     {

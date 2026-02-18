@@ -123,7 +123,7 @@ public class WwiseCliService
         var sdkVersion = _options.SdkVersion.Trim();
         if (string.IsNullOrEmpty(sdkVersion))
             sdkVersion = "2023.1.3.8471";
-        var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --email \"\" --password \"\"";
+        var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --filter DeploymentPlatforms=Linux --filter DeploymentPlatforms= --email \"\" --password \"\"";
         AnsiConsole.MarkupLine("[dim]Running: wwise-cli download ... (output below)[/]");
         var downloadResult = await _processRunner.RunWithConsoleOutputAsync(exePath, downloadArgs, workingDir, waitForExit: true, sendInputWhenLine: line =>
         {
@@ -146,9 +146,8 @@ public class WwiseCliService
         var integrationVersion = _options.IntegrationVersion.Trim();
         if (string.IsNullOrEmpty(integrationVersion))
             integrationVersion = "2023.1.3.2970";
-        var integrateArgs = $"integrate-ue --email \"\"\"\" --password \"\"\"\" --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
+        var integrateArgs = $"integrate-ue --email \"\" --password \"\" --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
         AnsiConsole.MarkupLine("[dim]Running: wwise-cli integrate-ue ... (output below)[/]");
-        AnsiConsole.MarkupLine("[dim]If prompted for Wwise email and password, press Enter twice (empty).[/]");
         // Attach stdin to console so the child gets a real console and avoids 'The handle is invalid' from some tools when stdin is redirected.
         var integrateResult = await _processRunner.RunWithConsoleOutputAsync(exePath, integrateArgs, workingDir, waitForExit: true, attachStdinToConsole: true, heartbeatInterval: TimeSpan.FromSeconds(30), heartbeatMessage: "Integrate step still running...");
         if (integrateResult.ExitCode != 0)

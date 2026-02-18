@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Spectre.Console;
 using SMEH;
 using SMEH.Helpers;
@@ -73,7 +74,7 @@ public class BuildEditorService
         var args = $"FactoryEditor Win64 Development -Project=\"{fullUprojectPath}\" -WaitMutex -FromMsBuild";
         AnsiConsole.MarkupLine("[dim]Building FactoryEditor (Development Editor, Win64)...[/]");
         AnsiConsole.MarkupLineInterpolated($"[dim]Project: {Markup.Escape(fullUprojectPath)}[/]");
-        var result = await _processRunner.RunAsync(buildBat, args, batchDir, waitForExit: true);
+        var result = await _processRunner.RunWithProgressAsync(buildBat, args, batchDir, waitForExit: true, progressParser: ParseBuildProgress, progressTaskName: "FactoryEditor");
         if (result.ExitCode != 0)
         {
             AnsiConsole.MarkupLineInterpolated($"[red]Build failed (exit code {result.ExitCode}).[/]");
@@ -85,6 +86,18 @@ public class BuildEditorService
         }
         AnsiConsole.MarkupLine("[green]Build completed successfully.[/]");
         return true;
+    }
+
+    /// <summary>Parses Unreal Build Tool progress from lines like "Building 319 action(s) started" and "[5/319] Compile ...".</summary>
+    private static (int current, int total)? ParseBuildProgress(string line)
+    {
+        var buildingMatch = Regex.Match(line, @"Building\s+(\d+)\s+action");
+        if (buildingMatch.Success)
+            return (0, int.Parse(buildingMatch.Groups[1].Value));
+        var stepMatch = Regex.Match(line, @"\[(\d+)/(\d+)\]");
+        if (stepMatch.Success)
+            return (int.Parse(stepMatch.Groups[1].Value), int.Parse(stepMatch.Groups[2].Value));
+        return null;
     }
 
     private string? ResolveStarterProjectPath()

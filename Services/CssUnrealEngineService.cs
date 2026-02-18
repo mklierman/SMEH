@@ -21,8 +21,21 @@ public class CssUnrealEngineService
 
     public async Task<bool> RunAsync()
     {
-        if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang }))
-            return false;
+        AnsiConsole.MarkupLine("[dim]Installing DirectX End-User Runtime (required for Unreal Engine)...[/]");
+        var directXService = new DirectXRuntimeService(_downloadHelper, _processRunner);
+        if (!await directXService.RunAsync())
+        {
+            AnsiConsole.MarkupLine("[yellow]DirectX install failed or was skipped. Unreal Engine may show XINPUT1_3.dll errors. Continuing with UE install.[/]");
+        }
+        AnsiConsole.WriteLine();
+
+        AnsiConsole.MarkupLine("[dim]Installing Visual C++ Redistributable 2015-2022 (x64) (required for Unreal Engine)...[/]");
+        var vcRedistService = new VcRedistService(_downloadHelper, _processRunner);
+        if (!await vcRedistService.RunAsync())
+        {
+            AnsiConsole.MarkupLine("[yellow]VC++ Redist install failed or was skipped. Continuing with UE install.[/]");
+        }
+        AnsiConsole.WriteLine();
 
         var downloadUrl = _options.DownloadUrl?.Trim();
         var repo = _options.Repository?.Trim();
@@ -76,7 +89,7 @@ public class CssUnrealEngineService
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Use a Personal Access Token (PAT) to download here, or download and install the engine manually?")
             .HighlightStyle(SmehTheme.AccentStyle)
-            .AddChoices("PAT", "Manual"));
+            .AddChoices("Manual", "PAT"));
         if (choice == "Manual")
         {
             const string releasesUrl = "https://github.com/satisfactorymodding/UnrealEngine/releases/latest";
@@ -278,11 +291,18 @@ public class CssUnrealEngineService
         }
 
         AnsiConsole.MarkupLine("[dim]All files ready. Running installer...[/]");
-        var result = await _processRunner.RunAsync(exePath, null, installDir, waitForExit: true);
+        if (!PromptInstallPath())
+            return false;
+        var result = await _processRunner.RunAsync(exePath, GetInstallerArgs(_options.InstallPath), installDir, waitForExit: true);
         if (result.ExitCode != 0)
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
         else
+        {
             AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
+            var installerFiles = new List<string> { exePath };
+            installerFiles.AddRange(binAssets.Select(b => Path.Combine(installDir, b.Name)));
+            OfferToDeleteInstallerFiles(installerFiles);
+        }
         return result.ExitCode == 0;
     }
 
@@ -315,11 +335,16 @@ public class CssUnrealEngineService
         if (fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
             AnsiConsole.MarkupLine("[dim]Running installer...[/]");
-            var result = await _processRunner.RunAsync(destPath, null, tempDir, waitForExit: true);
+            if (!PromptInstallPath())
+                return false;
+            var result = await _processRunner.RunAsync(destPath, GetInstallerArgs(_options.InstallPath), tempDir, waitForExit: true);
             if (result.ExitCode != 0)
                 AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
             else
+            {
                 AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
+                OfferToDeleteInstallerFiles(new[] { destPath });
+            }
             return result.ExitCode == 0;
         }
         AnsiConsole.MarkupLineInterpolated($"[dim]Downloaded to: {Markup.Escape(destPath)}[/]");
@@ -327,9 +352,76 @@ public class CssUnrealEngineService
         return false;
     }
 
+    private const string UnrealEngineInstallerArgs = "/SILENT /NORESTART";
+    private static readonly string DefaultInstallPath = AppDefaults.CssUnrealEngineInstallPath;
     private const string ManualInstallExe = "UnrealEngine-CSS-Editor-Win64.exe";
     private const string ManualInstallBin1 = "UnrealEngine-CSS-Editor-Win64-1.bin";
     private const string ManualInstallBin2 = "UnrealEngine-CSS-Editor-Win64-2.bin";
+
+    /// <summary>Prompts for install location (default or custom). Sets <see cref="CssUnrealEngineOptions.InstallPath"/> and returns true if a path was chosen, false if cancelled.</summary>
+    private bool PromptInstallPath()
+    {
+        AnsiConsole.MarkupLineInterpolated($"[dim]Default install location: [white]{Markup.Escape(DefaultInstallPath)}[/][/]");
+        var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Use this location or choose a custom path?")
+            .HighlightStyle(SmehTheme.AccentStyle)
+            .AddChoices("Use default", "Custom path"));
+        if (choice == "Use default")
+        {
+            _options.InstallPath = DefaultInstallPath;
+            return true;
+        }
+        var customPath = AnsiConsole.Prompt(new TextPrompt<string>("Enter custom install path (or press Enter to cancel):")
+            .AllowEmpty());
+        if (string.IsNullOrWhiteSpace(customPath))
+        {
+            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            return false;
+        }
+        customPath = customPath!.Trim();
+        if (!Directory.Exists(Path.GetPathRoot(customPath) ?? ""))
+        {
+            AnsiConsole.MarkupLineInterpolated($"[yellow]Drive or root not found. Installation may create the folder: {Markup.Escape(customPath)}[/]");
+        }
+        _options.InstallPath = customPath;
+        return true;
+    }
+
+    private static string GetInstallerArgs(string installPath)
+    {
+        var args = UnrealEngineInstallerArgs;
+        if (!string.Equals(installPath.Trim(), DefaultInstallPath, StringComparison.OrdinalIgnoreCase))
+            args += $" /DIR=\"{installPath.Trim()}\"";
+        return args;
+    }
+
+    /// <summary>Offers to delete the given installer files. Deletes only if user chooses Yes.</summary>
+    private static void OfferToDeleteInstallerFiles(IReadOnlyList<string> filePaths)
+    {
+        if (filePaths.Count == 0)
+            return;
+        var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Delete installer files?")
+            .HighlightStyle(SmehTheme.AccentStyle)
+            .AddChoices("Yes", "No"));
+        if (choice != "Yes")
+            return;
+        foreach (var path in filePaths)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    AnsiConsole.MarkupLineInterpolated($"[dim]Deleted {Markup.Escape(Path.GetFileName(path))}[/]");
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLineInterpolated($"[yellow]Could not delete {Markup.Escape(path)}: {Markup.Escape(ex.Message)}[/]");
+            }
+        }
+    }
 
     /// <summary>Returns true if folder contains the exact exe and both .bin files from the manual install set.</summary>
     private static bool HasManualInstallFiles(string folder, out string? exePath)
@@ -387,11 +479,21 @@ public class CssUnrealEngineService
             return false;
         }
         AnsiConsole.MarkupLineInterpolated($"[dim]Running installer: {Markup.Escape(ManualInstallExe)}[/]");
-        var result = await _processRunner.RunAsync(exePath, null, folder, waitForExit: true);
+        if (!PromptInstallPath())
+            return false;
+        var result = await _processRunner.RunAsync(exePath, GetInstallerArgs(_options.InstallPath), folder, waitForExit: true);
         if (result.ExitCode != 0)
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
         else
+        {
             AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
+            OfferToDeleteInstallerFiles(new[]
+            {
+                Path.Combine(folder, ManualInstallExe),
+                Path.Combine(folder, ManualInstallBin1),
+                Path.Combine(folder, ManualInstallBin2)
+            });
+        }
         return result.ExitCode == 0;
     }
 

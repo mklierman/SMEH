@@ -58,7 +58,7 @@ public class ClangInstallerService
             AnsiConsole.MarkupLine("[green]Running local installer...[/]");
         }
 
-        var result = await _processRunner.RunAsync(installerPath, null, null, waitForExit: true);
+        var result = await _processRunner.RunAsync(installerPath, "/S", null, waitForExit: true);
         if (result.ExitCode != 0 && !string.IsNullOrEmpty(result.StdError))
             AnsiConsole.WriteLine("Stderr: " + result.StdError);
 

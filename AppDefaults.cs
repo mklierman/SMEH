@@ -10,6 +10,12 @@ public static class AppDefaults
     // Clang
     public const string ClangInstallerUrl = "https://cdn.unrealengine.com/CrossToolchain_Linux/v22_clang-16.0.6-centos7.exe";
 
+    // DirectX End-User Runtime (XINPUT1_3.dll and other legacy components; required for UnrealVersionSelector and editor)
+    public const string DirectXWebInstallerUrl = "https://download.microsoft.com/download/1/7/1/1718ccc4-6315-4d8e-9543-8e28a4e18c4c/dxwebsetup.exe";
+
+    // Visual C++ Redistributable 2015-2022 (x64); required for Unreal Engine and many games
+    public const string VcRedistX64Url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
+
     // CSS Unreal Engine
     public const string CssUnrealEngineRepository = "satisfactorymodding/UnrealEngine";
     public const string CssUnrealEngineInstallPath = @"C:\Program Files\Unreal Engine - CSS";

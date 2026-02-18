@@ -65,7 +65,7 @@ public class GenerateVsProjectService
         var fullUprojectPath = Path.GetFullPath(uprojectPath!);
         var args = $"-projectfiles -project=\"{fullUprojectPath}\" -game -rocket -progress";
         AnsiConsole.MarkupLineInterpolated($"[dim]Generating Visual Studio project files for {Markup.Escape(fullUprojectPath)}...[/]");
-        var result = await _processRunner.RunAsync(unrealBuildToolPath, args, cssPath, waitForExit: true);
+        var result = await _processRunner.RunWithConsoleOutputAsync(unrealBuildToolPath, args, cssPath, waitForExit: true);
         if (result.ExitCode != 0)
         {
             AnsiConsole.MarkupLineInterpolated($"[red]UnrealBuildTool failed (exit code {result.ExitCode}).[/]");

@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.IO;
+using System.Security.Principal;
 using System.Text;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace SMEH.Helpers;
 
@@ -116,6 +118,139 @@ public class ProcessRunner
         return new ProcessRunResult(process.ExitCode, stdout.ToString().TrimEnd(), stderr.ToString().TrimEnd());
     }
 
+    /// <summary>Runs a process and shows a progress bar by parsing stdout/stderr with the given parser. Output is captured but not streamed; use the result to display output on failure.</summary>
+    public async Task<ProcessRunResult> RunWithProgressAsync(string fileName, string? arguments = null, string? workingDirectory = null, bool waitForExit = true, Func<string, (int current, int total)?>? progressParser = null, string progressTaskName = "Building...")
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments ?? "",
+            WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory(),
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = false
+        };
+
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        var progressLock = new object();
+        var current = 0;
+        var max = 0;
+
+        using var process = new Process { StartInfo = psi };
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data != null)
+            {
+                stdout.AppendLine(e.Data);
+                if (progressParser?.Invoke(e.Data) is { } p)
+                {
+                    lock (progressLock) { current = p.current; max = Math.Max(max, p.total); }
+                }
+            }
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data != null)
+            {
+                stderr.AppendLine(e.Data);
+                if (progressParser?.Invoke(e.Data) is { } p)
+                {
+                    lock (progressLock) { current = p.current; max = Math.Max(max, p.total); }
+                }
+            }
+        };
+
+        PrintCommand(fileName, psi.Arguments, psi.WorkingDirectory);
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        if (waitForExit && progressParser != null)
+        {
+            await AnsiConsole.Progress()
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn
+                    {
+                        CompletedStyle = new Style(SMEH.SmehTheme.Accent),
+                        FinishedStyle = new Style(Color.Lime),
+                        RemainingStyle = new Style(Color.Grey)
+                    },
+                    new PercentageColumn(),
+                    new ProgressCountColumn(),
+                    new SpinnerColumn())
+                .AutoClear(true)
+                .StartAsync(async ctx =>
+                {
+                    var task = ctx.AddTask(progressTaskName);
+                    var exitTask = process.WaitForExitAsync();
+                    while (!exitTask.IsCompleted)
+                    {
+                        lock (progressLock)
+                        {
+                            if (max > 0)
+                            {
+                                task.MaxValue = max;
+                                task.Value = current;
+                            }
+                        }
+                        await Task.WhenAny(exitTask, Task.Delay(200));
+                    }
+                    await exitTask;
+                    lock (progressLock)
+                    {
+                        if (max > 0) { task.MaxValue = max; task.Value = max; }
+                    }
+                });
+        }
+        else if (waitForExit)
+        {
+            await process.WaitForExitAsync();
+        }
+
+        return new ProcessRunResult(process.ExitCode, stdout.ToString().TrimEnd(), stderr.ToString().TrimEnd());
+    }
+
+    /// <summary>True if the current process is running with administrator privileges (e.g. user ran SMEH as admin).</summary>
+    public static bool IsRunningElevated()
+    {
+        if (!OperatingSystem.IsWindows())
+            return false;
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Runs a process with elevated privileges (admin). Use for installers that require it. Triggers UAC on Windows. Output is not captured.</summary>
+    public async Task<ProcessRunResult> RunElevatedAsync(string fileName, string? arguments = null, string? workingDirectory = null, bool waitForExit = true)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments ?? "",
+            WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory(),
+            UseShellExecute = true,
+            Verb = "runas"
+        };
+
+        PrintCommand(fileName, psi.Arguments, psi.WorkingDirectory);
+        using var process = Process.Start(psi);
+        if (process == null)
+            return new ProcessRunResult(-1, "", "Failed to start elevated process.");
+        if (waitForExit)
+            await process.WaitForExitAsync();
+        return new ProcessRunResult(process.ExitCode, "", "");
+    }
+
     private static void PrintCommand(string fileName, string arguments, string workingDirectory)
     {
         var cmd = string.IsNullOrEmpty(arguments) ? fileName : $"{fileName} {arguments}";
@@ -157,6 +292,20 @@ public class ProcessRunner
         catch (InvalidOperationException) { }
         catch (Exception ex) when (ex.Message.Contains("handle", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("invalid", StringComparison.OrdinalIgnoreCase)) { }
     }
+}
+
+/// <summary>Progress column that displays current/max (e.g. 5/319) after the percentage.</summary>
+internal sealed class ProgressCountColumn : ProgressColumn
+{
+    public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan elapsedTime)
+    {
+        var max = task.MaxValue;
+        var value = Math.Min(task.Value, max);
+        var text = max > 0 ? $"{value:N0}/{max:N0}" : "—";
+        return new Text(text, new Style(Color.Grey));
+    }
+
+    public override int? GetColumnWidth(RenderOptions options) => 12;
 }
 
 public record ProcessRunResult(int ExitCode, string StdOut, string StdError);
