@@ -8,7 +8,7 @@ public class CleanupService
     /// <summary>Root temp directory used by the app (VS2022, Clang, CssUnrealEngine, WwiseCLI).</summary>
     public static string TempRoot => Path.Combine(Path.GetTempPath(), "SMEH");
 
-    public Task<bool> RunAsync()
+    public Task<bool> RunAsync(bool skipConfirmation = false)
     {
         var path = TempRoot;
         if (!Directory.Exists(path))
@@ -17,17 +17,20 @@ public class CleanupService
             return Task.FromResult(true); // Nothing to do, consider it success
         }
 
-        AnsiConsole.MarkupLine("The following directory and all its contents will be deleted:");
-        AnsiConsole.MarkupLineInterpolated($"[yellow]  {Markup.Escape(path)}[/]");
-        AnsiConsole.WriteLine();
-        var answer = AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("Are you sure?")
-            .HighlightStyle(SmehTheme.AccentStyle)
-            .AddChoices("Yes", "No"));
-        if (answer != "Yes")
+        if (!skipConfirmation)
         {
-            AnsiConsole.MarkupLine("[dim]Cleanup cancelled.[/]");
-            return Task.FromResult(false);
+            AnsiConsole.MarkupLine("The following directory and all its contents will be deleted:");
+            AnsiConsole.MarkupLineInterpolated($"[yellow]  {Markup.Escape(path)}[/]");
+            AnsiConsole.WriteLine();
+            var answer = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                .Title("Are you sure?")
+                .HighlightStyle(SmehTheme.AccentStyle)
+                .AddChoices("Yes", "No"));
+            if (answer != "Yes")
+            {
+                AnsiConsole.MarkupLine("[dim]Cleanup cancelled.[/]");
+                return Task.FromResult(false);
+            }
         }
 
         try

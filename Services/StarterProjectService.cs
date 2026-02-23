@@ -33,13 +33,21 @@ public class StarterProjectService
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine }, cssUnrealEnginePath: string.IsNullOrEmpty(cssPath) ? null : cssPath))
             return false;
 
-        var basePath = AnsiConsole.Prompt(new TextPrompt<string>("Enter install location for the starter project (e.g. C:\\Modding):"));
-        if (string.IsNullOrWhiteSpace(basePath?.Trim()))
+        string basePath;
+        if (SmehState.RunAllUnattended && !string.IsNullOrWhiteSpace(_options.DefaultClonePath?.Trim()))
         {
-            AnsiConsole.MarkupLine("[red]No path entered. Aborted.[/]");
-            return false;
+            basePath = _options.DefaultClonePath.Trim();
         }
-        basePath = basePath!.Trim();
+        else
+        {
+            basePath = AnsiConsole.Prompt(new TextPrompt<string>("Enter install location for the starter project (e.g. C:\\Modding):"));
+            if (string.IsNullOrWhiteSpace(basePath?.Trim()))
+            {
+                AnsiConsole.MarkupLine("[red]No path entered. Aborted.[/]");
+                return false;
+            }
+            basePath = basePath!.Trim();
+        }
         if (!Directory.Exists(basePath))
         {
             try

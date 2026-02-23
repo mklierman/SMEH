@@ -19,24 +19,22 @@ public class CssUnrealEngineService
         _processRunner = processRunner;
     }
 
-    public async Task<bool> RunAsync()
+    private async Task RunDirectXAndVcRedistAsync()
     {
         AnsiConsole.MarkupLine("[dim]Installing DirectX End-User Runtime (required for Unreal Engine)...[/]");
         var directXService = new DirectXRuntimeService(_downloadHelper, _processRunner);
         if (!await directXService.RunAsync())
-        {
             AnsiConsole.MarkupLine("[yellow]DirectX install failed or was skipped. Unreal Engine may show XINPUT1_3.dll errors. Continuing with UE install.[/]");
-        }
         AnsiConsole.WriteLine();
-
         AnsiConsole.MarkupLine("[dim]Installing Visual C++ Redistributable 2015-2022 (x64) (required for Unreal Engine)...[/]");
         var vcRedistService = new VcRedistService(_downloadHelper, _processRunner);
         if (!await vcRedistService.RunAsync())
-        {
             AnsiConsole.MarkupLine("[yellow]VC++ Redist install failed or was skipped. Continuing with UE install.[/]");
-        }
         AnsiConsole.WriteLine();
+    }
 
+    public async Task<bool> RunAsync()
+    {
         var downloadUrl = _options.DownloadUrl?.Trim();
         var repo = _options.Repository?.Trim();
         if (string.IsNullOrEmpty(downloadUrl) && string.IsNullOrEmpty(repo))
@@ -58,6 +56,7 @@ public class CssUnrealEngineService
 
         if (!string.IsNullOrEmpty(downloadUrl))
         {
+            await RunDirectXAndVcRedistAsync();
             return await RunLegacyDownloadAsync(downloadUrl);
         }
 
@@ -107,6 +106,7 @@ public class CssUnrealEngineService
             var installFolder = GetManualInstallFolder();
             if (string.IsNullOrEmpty(installFolder))
                 return false;
+            await RunDirectXAndVcRedistAsync();
             return await RunInstallerFromFolderAsync(installFolder);
         }
 
@@ -132,6 +132,8 @@ public class CssUnrealEngineService
             SmehState.SetGitHubAccessToken(token);
             AnsiConsole.MarkupLine("[green]PAT saved for future runs.[/]");
         }
+
+        await RunDirectXAndVcRedistAsync();
 
         var releaseUrl = $"https://api.github.com/repos/{repo}/releases/latest";
         AnsiConsole.MarkupLine("[dim]Fetching latest release info...[/]");
@@ -361,6 +363,8 @@ public class CssUnrealEngineService
     /// <summary>Prompts for install location (default or custom). Sets <see cref="CssUnrealEngineOptions.InstallPath"/> and returns true if a path was chosen, false if cancelled.</summary>
     private bool PromptInstallPath()
     {
+        if (SmehState.RunAllUnattended && !string.IsNullOrWhiteSpace(_options.InstallPath))
+            return true;
         AnsiConsole.MarkupLineInterpolated($"[dim]Default install location: [white]{Markup.Escape(DefaultInstallPath)}[/][/]");
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Use this location or choose a custom path?")
@@ -393,6 +397,38 @@ public class CssUnrealEngineService
         if (!string.Equals(installPath.Trim(), DefaultInstallPath, StringComparison.OrdinalIgnoreCase))
             args += $" /DIR=\"{installPath.Trim()}\"";
         return args;
+    }
+
+    /// <summary>Asks if the user wants to delete Unreal Engine installer files (exe + .bin) from a folder, then prompts for the path and deletes if present. Used at end of run-all.</summary>
+    public static void OfferToDeleteEngineInstallerFiles()
+    {
+        var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Delete Unreal Engine installer files (exe and .bin) to free space?")
+            .HighlightStyle(SmehTheme.AccentStyle)
+            .AddChoices("Yes", "No"));
+        if (choice != "Yes")
+            return;
+        var folder = AnsiConsole.Prompt(new TextPrompt<string>("Enter the folder path containing the installer files (or press Enter to skip):")
+            .AllowEmpty());
+        if (string.IsNullOrWhiteSpace(folder?.Trim()))
+            return;
+        folder = folder!.Trim();
+        var filePaths = new[] { Path.Combine(folder, ManualInstallExe), Path.Combine(folder, ManualInstallBin1), Path.Combine(folder, ManualInstallBin2) };
+        foreach (var path in filePaths)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    AnsiConsole.MarkupLineInterpolated($"[dim]Deleted {Markup.Escape(Path.GetFileName(path))}[/]");
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLineInterpolated($"[yellow]Could not delete {Markup.Escape(path)}: {Markup.Escape(ex.Message)}[/]");
+            }
+        }
     }
 
     /// <summary>Offers to delete the given installer files. Deletes only if user chooses Yes.</summary>
