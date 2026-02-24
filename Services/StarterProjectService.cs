@@ -77,14 +77,21 @@ public class StarterProjectService
         if (string.IsNullOrEmpty(gitPath))
         {
             AnsiConsole.MarkupLine("[yellow]Git was not found on PATH.[/]");
-            var install = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .Title("Install Git automatically?")
-                .HighlightStyle(SmehTheme.AccentStyle)
-                .AddChoices("Yes", "No"));
-            if (install != "Yes")
+            if (!SmehState.RunAllUnattended)
             {
-                AnsiConsole.MarkupLine("[yellow]Please install Git from [link=https://git-scm.com/download/win]git-scm.com[/] and ensure it is in your PATH.[/]");
-                return false;
+                var install = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                    .Title("Install Git automatically?")
+                    .HighlightStyle(SmehTheme.AccentStyle)
+                    .AddChoices("Yes", "No"));
+                if (install != "Yes")
+                {
+                    AnsiConsole.MarkupLine("[yellow]Please install Git from [link=https://git-scm.com/download/win]git-scm.com[/] and ensure it is in your PATH.[/]");
+                    return false;
+                }
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[dim]Installing Git.[/]");
             }
             var installed = await InstallGitAsync();
             if (!installed)

@@ -303,7 +303,8 @@ public class CssUnrealEngineService
             AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
             var installerFiles = new List<string> { exePath };
             installerFiles.AddRange(binAssets.Select(b => Path.Combine(installDir, b.Name)));
-            OfferToDeleteInstallerFiles(installerFiles);
+            if (!SmehState.RunAllUnattended)
+                OfferToDeleteInstallerFiles(installerFiles);
         }
         return result.ExitCode == 0;
     }
@@ -345,7 +346,8 @@ public class CssUnrealEngineService
             else
             {
                 AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
-                OfferToDeleteInstallerFiles(new[] { destPath });
+                if (!SmehState.RunAllUnattended)
+                    OfferToDeleteInstallerFiles(new[] { destPath });
             }
             return result.ExitCode == 0;
         }
@@ -399,20 +401,22 @@ public class CssUnrealEngineService
         return args;
     }
 
-    /// <summary>Asks if the user wants to delete Unreal Engine installer files (exe + .bin) from a folder, then prompts for the path and deletes if present. Used at end of run-all.</summary>
+    /// <summary>Asks if the user wants to delete Unreal Engine installer files (exe + .bin). Uses LastUnrealEngineInstallerFolder when set (run-all Manual path); otherwise skips. Used at end of run-all.</summary>
     public static void OfferToDeleteEngineInstallerFiles()
     {
+        var folder = SmehState.LastUnrealEngineInstallerFolder?.Trim();
+        if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
+        {
+            SmehState.LastUnrealEngineInstallerFolder = null;
+            return;
+        }
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("Delete Unreal Engine installer files (exe and .bin) to free space?")
+            .Title($"Delete Unreal Engine installer files from {Markup.Escape(folder)}?")
             .HighlightStyle(SmehTheme.AccentStyle)
             .AddChoices("Yes", "No"));
+        SmehState.LastUnrealEngineInstallerFolder = null;
         if (choice != "Yes")
             return;
-        var folder = AnsiConsole.Prompt(new TextPrompt<string>("Enter the folder path containing the installer files (or press Enter to skip):")
-            .AllowEmpty());
-        if (string.IsNullOrWhiteSpace(folder?.Trim()))
-            return;
-        folder = folder!.Trim();
         var filePaths = new[] { Path.Combine(folder, ManualInstallExe), Path.Combine(folder, ManualInstallBin1), Path.Combine(folder, ManualInstallBin2) };
         foreach (var path in filePaths)
         {
@@ -509,6 +513,8 @@ public class CssUnrealEngineService
 
     private async Task<bool> RunInstallerFromFolderAsync(string folder)
     {
+        if (SmehState.RunAllUnattended)
+            SmehState.LastUnrealEngineInstallerFolder = folder;
         if (!HasManualInstallFiles(folder, out var exePath) || exePath == null)
         {
             AnsiConsole.MarkupLine("[red]Installer files not found.[/]");
@@ -523,12 +529,13 @@ public class CssUnrealEngineService
         else
         {
             AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
-            OfferToDeleteInstallerFiles(new[]
-            {
-                Path.Combine(folder, ManualInstallExe),
-                Path.Combine(folder, ManualInstallBin1),
-                Path.Combine(folder, ManualInstallBin2)
-            });
+            if (!SmehState.RunAllUnattended)
+                OfferToDeleteInstallerFiles(new[]
+                {
+                    Path.Combine(folder, ManualInstallExe),
+                    Path.Combine(folder, ManualInstallBin1),
+                    Path.Combine(folder, ManualInstallBin2)
+                });
         }
         return result.ExitCode == 0;
     }

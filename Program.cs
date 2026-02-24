@@ -167,8 +167,6 @@ static async Task<bool> RunAllAsync(SmehOptions options,
     options.WwiseCli.StarterProjectPath = Path.Combine(starterBase, "SatisfactoryModLoader");
 
     AnsiConsole.WriteLine();
-    AnsiConsole.MarkupLine("[green]Starting run. Step 1 (Unreal Engine) will use the existing flow; steps 2–7 will run without further prompts.[/]");
-    AnsiConsole.WriteLine();
 
     SmehState.RunAllUnattended = true;
     try
@@ -195,7 +193,11 @@ static async Task<bool> RunAllAsync(SmehOptions options,
             }
             AnsiConsole.WriteLine();
         }
-        AnsiConsole.MarkupLine("[green]Run all completed successfully.[/]");
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Panel("[green]✓ Run all completed successfully.[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderColor(SmehTheme.Accent)
+            .Padding(1, 0));
         AnsiConsole.WriteLine();
 
         // Automatically clean up temp files.

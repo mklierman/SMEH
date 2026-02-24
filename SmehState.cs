@@ -10,6 +10,9 @@ public static class SmehState
     /// <summary>When true, run-all flow is active; services should skip interactive prompts and use pre-set paths.</summary>
     public static bool RunAllUnattended { get; set; }
 
+    /// <summary>Folder containing the UE installer files (Manual path), set during run-all so we can offer to delete at the end without asking for path.</summary>
+    public static string? LastUnrealEngineInstallerFolder { get; set; }
+
     /// <summary>Step numbers: 1=VS 2022, 2=Clang, 3=CSS Unreal Engine, 4=Starter Project, 5=Wwise.</summary>
     public const int StepVisualStudio = 1;
     public const int StepClang = 2;
