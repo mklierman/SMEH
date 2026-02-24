@@ -4,6 +4,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Installs Visual C++ Redistributable (used as a prerequisite by CSS Unreal Engine installer).</summary>
 public class VcRedistService
 {
     private readonly DownloadHelper _downloadHelper;
@@ -19,15 +20,15 @@ public class VcRedistService
     {
         if (IsVcRedistInstalled())
         {
-            AnsiConsole.MarkupLine("[dim]Visual C++ Redistributable 2015-2022 (x64) is already installed. Skipping.[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Visual C++ Redistributable 2015-2022 (x64) is already installed. Skipping.[/]");
             return true;
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "VcRedist");
+        var tempDir = Path.Combine(CleanupService.TempRoot, "VcRedist");
         Directory.CreateDirectory(tempDir);
         var installerPath = Path.Combine(tempDir, "vc_redist.x64.exe");
 
-        AnsiConsole.MarkupLine("[dim]Downloading Visual C++ Redistributable 2015-2022 (x64)...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Visual C++ Redistributable 2015-2022 (x64)...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "VC++"));
         try
         {
@@ -42,7 +43,7 @@ public class VcRedistService
         AnsiConsole.MarkupLine("[green]Download complete. Running installer (quiet mode)...[/]");
         var alreadyElevated = ProcessRunner.IsRunningElevated();
         if (OperatingSystem.IsWindows() && !alreadyElevated)
-            AnsiConsole.MarkupLine("[dim]You may see a UAC prompt to allow administrator access.[/]");
+            AnsiConsole.MarkupLine($"[dim]You may see a UAC prompt to allow administrator access.[/]");
 
         // /install /quiet /norestart - silent install. Run elevated on Windows unless already admin.
         var args = "/install /quiet /norestart";

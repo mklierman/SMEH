@@ -19,5 +19,9 @@ public static class SmehTheme
     public static readonly Color Border = new(64, 64, 64);
     public const string BorderHex = "#404040";
 
+    // FICSIT orange for message / status text — #fa9549
+    public const string FicsitOrange = "#fa9549";
+    public static readonly Color FicsitOrangeColor = new(250, 149, 73);
+
     public static Style AccentStyle => Style.Plain.Foreground(Accent);
 }

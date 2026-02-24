@@ -3,9 +3,10 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Removes SMEH temp files under TempRoot; menu option 10.</summary>
 public class CleanupService
 {
-    /// <summary>Root temp directory used by the app (VS2022, Clang, CssUnrealEngine, WwiseCLI).</summary>
+    /// <summary>Root temp directory used by the app (VS2022, Clang, CssUnrealEngine, WwiseCLI, GitInstall).</summary>
     public static string TempRoot => Path.Combine(Path.GetTempPath(), "SMEH");
 
     public Task<bool> RunAsync(bool skipConfirmation = false)
@@ -13,7 +14,7 @@ public class CleanupService
         var path = TempRoot;
         if (!Directory.Exists(path))
         {
-            AnsiConsole.MarkupLine("[dim]No SMEH temp files found. Nothing to clean.[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]No SMEH temp files found. Nothing to clean.[/]");
             return Task.FromResult(true); // Nothing to do, consider it success
         }
 
@@ -28,7 +29,7 @@ public class CleanupService
                 .AddChoices("Yes", "No"));
             if (answer != "Yes")
             {
-                AnsiConsole.MarkupLine("[dim]Cleanup cancelled.[/]");
+                AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Cleanup cancelled.[/]");
                 return Task.FromResult(false);
             }
         }

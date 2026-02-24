@@ -7,6 +7,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Clones the SatisfactoryModLoader (SML) repo and optionally runs Wwise integration; menu option 5.</summary>
 public class StarterProjectService
 {
     private readonly StarterProjectOptions _options;
@@ -91,7 +92,7 @@ public class StarterProjectService
             }
             else
             {
-                AnsiConsole.MarkupLine("[dim]Installing Git.[/]");
+                AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Git.[/]");
             }
             var installed = await InstallGitAsync();
             if (!installed)
@@ -107,7 +108,7 @@ public class StarterProjectService
             }
         }
 
-        AnsiConsole.MarkupLineInterpolated($"[dim]Cloning {Markup.Escape(_options.RepositoryUrl)} (branch: {Markup.Escape(_options.Branch)}) to {Markup.Escape(targetPath)}...[/]");
+        AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.FicsitOrange}]Cloning {Markup.Escape(_options.RepositoryUrl)} (branch: {Markup.Escape(_options.Branch)}) to {Markup.Escape(targetPath)}...[/]");
         var args = $"clone --branch \"{_options.Branch}\" \"{_options.RepositoryUrl}\" \"{targetPath}\"";
         var result = await _processRunner.RunAsync(gitPath, args, null, waitForExit: true);
 
@@ -154,7 +155,7 @@ public class StarterProjectService
     private async Task<bool> InstallGitAsync()
     {
         const string repo = "git-for-windows/git";
-        AnsiConsole.MarkupLine("[dim]Fetching Git for Windows latest release...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Fetching Git for Windows latest release...[/]");
         using var response = await HttpClient.GetAsync($"https://api.github.com/repos/{repo}/releases/latest");
         if (!response.IsSuccessStatusCode)
         {
@@ -181,10 +182,10 @@ public class StarterProjectService
             AnsiConsole.MarkupLine("[red]No 64-bit Git installer found in release.[/]");
             return false;
         }
-        var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "GitInstall");
+        var tempDir = Path.Combine(CleanupService.TempRoot, "GitInstall");
         Directory.CreateDirectory(tempDir);
         var installerPath = Path.Combine(tempDir, assetName);
-        AnsiConsole.MarkupLine("[dim]Downloading Git installer...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Git installer...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Git"));
         try
         {
@@ -196,7 +197,7 @@ public class StarterProjectService
             return false;
         }
         ConsoleProgressBar.Clear();
-        AnsiConsole.MarkupLine("[dim]Installing Git (this may take a minute)...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Git (this may take a minute)...[/]");
         var result = await _processRunner.RunAsync(installerPath, "/VERYSILENT /NORESTART", tempDir, waitForExit: true);
         if (result.ExitCode != 0)
         {

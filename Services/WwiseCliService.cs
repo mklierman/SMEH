@@ -6,6 +6,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Downloads Wwise-CLI, installs it into the starter project, and runs Wwise integration; menu option 6.</summary>
 public class WwiseCliService
 {
     private readonly WwiseCliOptions _options;
@@ -39,7 +40,7 @@ public class WwiseCliService
             ? $"https://api.github.com/repos/{repo}/releases/latest"
             : $"https://api.github.com/repos/{repo}/releases/tags/{_options.ReleaseTag}";
 
-        AnsiConsole.MarkupLine("[dim]Fetching release info...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Fetching release info...[/]");
         using var response = await HttpClient.GetAsync(releaseUrl);
         if (!response.IsSuccessStatusCode)
         {
@@ -70,7 +71,7 @@ public class WwiseCliService
             return false;
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "WwiseCLI");
+        var tempDir = Path.Combine(CleanupService.TempRoot, "WwiseCLI");
         Directory.CreateDirectory(tempDir);
         var destPath = Path.Combine(tempDir, assetName);
 
@@ -84,7 +85,7 @@ public class WwiseCliService
         string? workingDir = tempDir;
         if (assetName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
-            AnsiConsole.MarkupLine("[dim]Extracting...[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Extracting...[/]");
             var extractDir = Path.Combine(tempDir, "extracted");
             Directory.CreateDirectory(extractDir);
             System.IO.Compression.ZipFile.ExtractToDirectory(destPath, extractDir, overwriteFiles: true);
@@ -100,7 +101,7 @@ public class WwiseCliService
             workingDir = Path.GetDirectoryName(exePath);
 
         // Resolve starter project path (must be cloned first for integrate-ue)
-        var projectDir = ResolveStarterProjectPath();
+        var projectDir = ProjectPathHelper.ResolveStarterProjectPath(_options);
         if (string.IsNullOrEmpty(projectDir))
             return false;
 
@@ -112,7 +113,7 @@ public class WwiseCliService
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
-            if (!TryPromptProjectPath(out var promptedDir, out var promptedUproject))
+            if (!ProjectPathHelper.TryPromptProjectPath(out var promptedDir, out var promptedUproject))
                 return false;
             projectDir = promptedDir!;
             uprojectPath = promptedUproject!;
@@ -124,7 +125,7 @@ public class WwiseCliService
         if (string.IsNullOrEmpty(sdkVersion))
             sdkVersion = "2023.1.3.8471";
         var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --filter DeploymentPlatforms=Linux --filter DeploymentPlatforms= --email \"\" --password \"\"";
-        AnsiConsole.MarkupLine("[dim]Running: wwise-cli download ... (output below)[/]");
+        AnsiConsole.MarkupLine($"[dim]Running: wwise-cli download ... (output below)[/]");
         var downloadResult = await _processRunner.RunWithConsoleOutputAsync(exePath, downloadArgs, workingDir, waitForExit: true, sendInputWhenLine: line =>
         {
             if (line != null && (line.Contains("Enter Wwise email:", StringComparison.OrdinalIgnoreCase) || line.Contains("Enter Wwise password:", StringComparison.OrdinalIgnoreCase)))
@@ -147,7 +148,7 @@ public class WwiseCliService
         if (string.IsNullOrEmpty(integrationVersion))
             integrationVersion = "2023.1.3.2970";
         var integrateArgs = $"integrate-ue --email \"\" --password \"\" --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
-        AnsiConsole.MarkupLine("[dim]Running: wwise-cli integrate-ue ... (output below)[/]");
+        AnsiConsole.MarkupLine($"[dim]Running: wwise-cli integrate-ue ... (output below)[/]");
         // Attach stdin to console so the child gets a real console and avoids 'The handle is invalid' from some tools when stdin is redirected.
         var integrateResult = await _processRunner.RunWithConsoleOutputAsync(exePath, integrateArgs, workingDir, waitForExit: true, attachStdinToConsole: true, heartbeatInterval: TimeSpan.FromSeconds(30), heartbeatMessage: "Integrate step still running...");
         if (integrateResult.ExitCode != 0)
@@ -163,63 +164,4 @@ public class WwiseCliService
         return true;
     }
 
-    private string? ResolveStarterProjectPath()
-    {
-        var path = _options.StarterProjectPath?.Trim();
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            return path;
-
-        path = SmehState.GetLastClonePath();
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            return path;
-
-        AnsiConsole.MarkupLine("[yellow]Starter project path not found. Run option 4 (Starter Project) first to clone the repo,[/]");
-        AnsiConsole.MarkupLine("[yellow]or enter the clone directory when prompted.[/]");
-        path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to SatisfactoryModLoader clone (or press Enter to cancel):")
-            .AllowEmpty());
-        if (string.IsNullOrEmpty(path?.Trim()))
-        {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
-            return null;
-        }
-        path = path.Trim();
-        if (!Directory.Exists(path))
-        {
-            AnsiConsole.MarkupLineInterpolated($"[red]Directory not found: {Markup.Escape(path)}[/]");
-            return null;
-        }
-        SmehState.SetLastClonePath(path);
-        return path;
-    }
-
-    private static bool TryPromptProjectPath(out string? projectDir, out string? uprojectPath)
-    {
-        projectDir = null;
-        uprojectPath = null;
-        var path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to project folder or to FactoryGame.uproject (or press Enter to cancel):")
-            .AllowEmpty());
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
-            return false;
-        }
-        path = path!.Trim();
-        if (File.Exists(path) && path.EndsWith("FactoryGame.uproject", StringComparison.OrdinalIgnoreCase))
-        {
-            projectDir = Path.GetDirectoryName(path);
-            uprojectPath = path;
-            return !string.IsNullOrEmpty(projectDir);
-        }
-        if (Directory.Exists(path))
-        {
-            uprojectPath = Path.Combine(path, "FactoryGame.uproject");
-            if (File.Exists(uprojectPath))
-            {
-                projectDir = path;
-                return true;
-            }
-        }
-        AnsiConsole.MarkupLine("[red]FactoryGame.uproject not found at that path.[/]");
-        return false;
-    }
 }

@@ -4,6 +4,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Installs DirectX End-User Runtime (used as a prerequisite by CSS Unreal Engine installer).</summary>
 public class DirectXRuntimeService
 {
     private readonly DownloadHelper _downloadHelper;
@@ -19,15 +20,15 @@ public class DirectXRuntimeService
     {
         if (IsDirectXEndUserRuntimeInstalled())
         {
-            AnsiConsole.MarkupLine("[dim]DirectX End-User Runtime is already installed. Skipping.[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]DirectX End-User Runtime is already installed. Skipping.[/]");
             return true;
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "DirectX");
+        var tempDir = Path.Combine(CleanupService.TempRoot, "DirectX");
         Directory.CreateDirectory(tempDir);
         var installerPath = Path.Combine(tempDir, "dxwebsetup.exe");
 
-        AnsiConsole.MarkupLine("[dim]Downloading DirectX End-User Runtime Web Installer...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading DirectX End-User Runtime Web Installer...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "DirectX"));
         try
         {
@@ -42,8 +43,8 @@ public class DirectXRuntimeService
         AnsiConsole.MarkupLine("[green]Download complete. Running installer (quiet mode)...[/]");
         var alreadyElevated = ProcessRunner.IsRunningElevated();
         if (OperatingSystem.IsWindows() && !alreadyElevated)
-            AnsiConsole.MarkupLine("[dim]You may see a UAC prompt to allow administrator access. This is required for DirectX install.[/]");
-        AnsiConsole.MarkupLine("[dim]This may take a few minutes. The installer may show a progress window.[/]");
+            AnsiConsole.MarkupLine($"[dim]You may see a UAC prompt to allow administrator access. This is required for DirectX install.[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]This may take a few minutes. The installer may show a progress window.[/]");
 
         // /Q = quiet install. On Windows, run elevated unless we're already admin (then child inherits; no second UAC).
         var result = OperatingSystem.IsWindows() && !alreadyElevated

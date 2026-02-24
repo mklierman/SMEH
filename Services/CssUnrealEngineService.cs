@@ -6,6 +6,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Downloads and installs the CSS (Custom Source Satisfactory) Unreal Engine build; menu option 2. Runs DirectX and VC Redist installers as prerequisites.</summary>
 public class CssUnrealEngineService
 {
     private readonly CssUnrealEngineOptions _options;
@@ -19,14 +20,20 @@ public class CssUnrealEngineService
         _processRunner = processRunner;
     }
 
+    private const string UnrealEngineInstallerArgs = "/SILENT /NORESTART";
+    private static readonly string DefaultInstallPath = AppDefaults.CssUnrealEngineInstallPath;
+    private const string ManualInstallExe = "UnrealEngine-CSS-Editor-Win64.exe";
+    private const string ManualInstallBin1 = "UnrealEngine-CSS-Editor-Win64-1.bin";
+    private const string ManualInstallBin2 = "UnrealEngine-CSS-Editor-Win64-2.bin";
+
     private async Task RunDirectXAndVcRedistAsync()
     {
-        AnsiConsole.MarkupLine("[dim]Installing DirectX End-User Runtime (required for Unreal Engine)...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing DirectX End-User Runtime (required for Unreal Engine)...[/]");
         var directXService = new DirectXRuntimeService(_downloadHelper, _processRunner);
         if (!await directXService.RunAsync())
             AnsiConsole.MarkupLine("[yellow]DirectX install failed or was skipped. Unreal Engine may show XINPUT1_3.dll errors. Continuing with UE install.[/]");
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[dim]Installing Visual C++ Redistributable 2015-2022 (x64) (required for Unreal Engine)...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Visual C++ Redistributable 2015-2022 (x64) (required for Unreal Engine)...[/]");
         var vcRedistService = new VcRedistService(_downloadHelper, _processRunner);
         if (!await vcRedistService.RunAsync())
             AnsiConsole.MarkupLine("[yellow]VC++ Redist install failed or was skipped. Continuing with UE install.[/]");
@@ -44,7 +51,7 @@ public class CssUnrealEngineService
                 .AllowEmpty());
             if (string.IsNullOrWhiteSpace(input))
             {
-                AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+                AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Cancelled.[/]");
                 return false;
             }
             input = input!.Trim();
@@ -116,7 +123,7 @@ public class CssUnrealEngineService
         {
             token = Environment.GetEnvironmentVariable("SMEH_GITHUB_PAT")?.Trim() ?? _options.GitHubPat?.Trim();
             if (!string.IsNullOrEmpty(token))
-                AnsiConsole.MarkupLine("[dim]Using GitHub PAT from config or SMEH_GITHUB_PAT.[/]");
+                AnsiConsole.MarkupLine($"[dim]Using GitHub PAT from config or SMEH_GITHUB_PAT.[/]");
         }
 
         if (string.IsNullOrEmpty(token))
@@ -136,7 +143,7 @@ public class CssUnrealEngineService
         await RunDirectXAndVcRedistAsync();
 
         var releaseUrl = $"https://api.github.com/repos/{repo}/releases/latest";
-        AnsiConsole.MarkupLine("[dim]Fetching latest release info...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Fetching latest release info...[/]");
 
         var authClient = CreateGitHubHttpClient(token);
         try
@@ -188,7 +195,7 @@ public class CssUnrealEngineService
                     AnsiConsole.MarkupLine("  - The repo is private and no valid GitHub authorization is present.");
                     AnsiConsole.MarkupLine("  - You have not finished linking your GitHub account (see the link above).");
                     AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine("To authorize: use a GitHub PAT (env [dim]SMEH_GITHUB_PAT[/]) or enter it when prompted.");
+                    AnsiConsole.MarkupLine($@"To authorize: use a GitHub PAT (env [{SmehTheme.FicsitOrange}]SMEH_GITHUB_PAT[/]) or enter it when prompted.");
                     AnsiConsole.MarkupLine("[link=https://github.com/settings/developers]OAuth App[/] — callback URL http://localhost, enable Device flow.");
                     AnsiConsole.WriteLine();
                     AnsiConsole.MarkupLine("Or download the release files manually in your browser, save the .exe and .bin in one folder, then run the .exe.");
@@ -271,13 +278,13 @@ public class CssUnrealEngineService
             return false;
         }
 
-        var installDir = Path.Combine(Path.GetTempPath(), "SMEH", "CssUnrealEngine");
+        var installDir = Path.Combine(CleanupService.TempRoot, "CssUnrealEngine");
         Directory.CreateDirectory(installDir);
 
         var ghHeaders = new Dictionary<string, string> { ["Accept"] = "application/octet-stream" };
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p));
 
-        AnsiConsole.MarkupLine("[dim]Downloading installer (.exe)...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading installer (.exe)...[/]");
         var exePath = Path.Combine(installDir, exeAsset);
         await _downloadHelper.DownloadFileAsync(exeApiUrl, exePath, progress, default, authClient, ghHeaders);
         ConsoleProgressBar.Clear();
@@ -292,7 +299,7 @@ public class CssUnrealEngineService
             AnsiConsole.WriteLine();
         }
 
-        AnsiConsole.MarkupLine("[dim]All files ready. Running installer...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]All files ready. Running installer...[/]");
         if (!PromptInstallPath())
             return false;
         var result = await _processRunner.RunAsync(exePath, GetInstallerArgs(_options.InstallPath), installDir, waitForExit: true);
@@ -311,7 +318,7 @@ public class CssUnrealEngineService
 
     private async Task<bool> RunLegacyDownloadAsync(string downloadUrl)
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "CssUnrealEngine");
+        var tempDir = Path.Combine(CleanupService.TempRoot, "CssUnrealEngine");
         Directory.CreateDirectory(tempDir);
 
         var fileName = Path.GetFileName(new Uri(downloadUrl).LocalPath);
@@ -319,7 +326,7 @@ public class CssUnrealEngineService
             fileName = "css-unreal-engine.zip";
         var destPath = Path.Combine(tempDir, fileName);
 
-        AnsiConsole.MarkupLine("[dim]Downloading CSS Unreal Engine...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading CSS Unreal Engine...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "CSS UE"));
         await _downloadHelper.DownloadFileAsync(downloadUrl, destPath, progress);
         ConsoleProgressBar.Clear();
@@ -330,14 +337,14 @@ public class CssUnrealEngineService
         {
             var extractDir = Path.Combine(tempDir, "extracted");
             Directory.CreateDirectory(extractDir);
-            AnsiConsole.MarkupLine("[dim]Extracting...[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Extracting...[/]");
             System.IO.Compression.ZipFile.ExtractToDirectory(destPath, extractDir, overwriteFiles: true);
             AnsiConsole.MarkupLineInterpolated($"[dim]Extracted to: {Markup.Escape(extractDir)}[/]");
             return false; // User may need to run installer manually
         }
         if (fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
-            AnsiConsole.MarkupLine("[dim]Running installer...[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Running installer...[/]");
             if (!PromptInstallPath())
                 return false;
             var result = await _processRunner.RunAsync(destPath, GetInstallerArgs(_options.InstallPath), tempDir, waitForExit: true);
@@ -355,12 +362,6 @@ public class CssUnrealEngineService
         AnsiConsole.MarkupLine("[yellow]Unknown file type. Extract or run manually as needed.[/]");
         return false;
     }
-
-    private const string UnrealEngineInstallerArgs = "/SILENT /NORESTART";
-    private static readonly string DefaultInstallPath = AppDefaults.CssUnrealEngineInstallPath;
-    private const string ManualInstallExe = "UnrealEngine-CSS-Editor-Win64.exe";
-    private const string ManualInstallBin1 = "UnrealEngine-CSS-Editor-Win64-1.bin";
-    private const string ManualInstallBin2 = "UnrealEngine-CSS-Editor-Win64-2.bin";
 
     /// <summary>Prompts for install location (default or custom). Sets <see cref="CssUnrealEngineOptions.InstallPath"/> and returns true if a path was chosen, false if cancelled.</summary>
     private bool PromptInstallPath()
@@ -381,7 +382,7 @@ public class CssUnrealEngineService
             .AllowEmpty());
         if (string.IsNullOrWhiteSpace(customPath))
         {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Cancelled.[/]");
             return false;
         }
         customPath = customPath!.Trim();
@@ -483,7 +484,7 @@ public class CssUnrealEngineService
         if (Directory.Exists(downloadsPath) && HasManualInstallFiles(downloadsPath, out _))
         {
             var useDownloads = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .Title($"Found installer in Downloads folder. Use [dim]{Markup.Escape(downloadsPath)}[/]?")
+                .Title($"Found installer in Downloads folder. Use [{SmehTheme.FicsitOrange}]{Markup.Escape(downloadsPath)}[/]?")
                 .HighlightStyle(SmehTheme.AccentStyle)
                 .AddChoices("Yes", "No, choose another folder"));
             if (useDownloads == "Yes")
@@ -494,7 +495,7 @@ public class CssUnrealEngineService
             .AllowEmpty());
         if (string.IsNullOrWhiteSpace(folder))
         {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Cancelled.[/]");
             return null;
         }
         folder = folder.Trim();
@@ -505,7 +506,7 @@ public class CssUnrealEngineService
         }
         if (!HasManualInstallFiles(folder, out _))
         {
-            AnsiConsole.MarkupLine("[red]Folder must contain exactly: [dim]UnrealEngine-CSS-Editor-Win64.exe[/], [dim]UnrealEngine-CSS-Editor-Win64-1.bin[/], and [dim]UnrealEngine-CSS-Editor-Win64-2.bin[/].[/]");
+            AnsiConsole.MarkupLine($"[red]Folder must contain exactly: [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64.exe[/], [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64-1.bin[/], and [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64-2.bin[/].[/]");
             return null;
         }
         return folder;

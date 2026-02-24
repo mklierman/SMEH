@@ -4,6 +4,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Downloads and installs the Clang cross-toolchain used by Unreal Engine; menu option 4.</summary>
 public class ClangInstallerService
 {
     private readonly ClangOptions _options;
@@ -30,7 +31,7 @@ public class ClangInstallerService
                 .AllowEmpty());
             if (string.IsNullOrWhiteSpace(installerUrlOrPath))
             {
-                AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+                AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Cancelled.[/]");
                 return false;
             }
             installerUrlOrPath = installerUrlOrPath!.Trim();
@@ -39,9 +40,9 @@ public class ClangInstallerService
         string installerPath;
         if (installerUrlOrPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || installerUrlOrPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "Clang");
+            var tempDir = Path.Combine(CleanupService.TempRoot, "Clang");
             installerPath = Path.Combine(tempDir, "v22_clang-16.0.6-centos7.exe");
-            AnsiConsole.MarkupLine("[dim]Downloading Clang installer...[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Clang installer...[/]");
             var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Clang"));
             await _downloadHelper.DownloadFileAsync(installerUrlOrPath, installerPath, progress);
             ConsoleProgressBar.Clear();

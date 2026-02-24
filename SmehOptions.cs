@@ -1,5 +1,6 @@
 namespace SMEH;
 
+/// <summary>Root configuration object; each property holds options for a specific area (Visual Studio, Clang, CSS UE, Wwise, Starter Project).</summary>
 public class SmehOptions
 {
     public const string SectionName = "Smeh";

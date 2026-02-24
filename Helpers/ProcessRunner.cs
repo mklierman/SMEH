@@ -7,6 +7,7 @@ using Spectre.Console.Rendering;
 
 namespace SMEH.Helpers;
 
+/// <summary>Runs external processes (installers, Build.bat, UnrealBuildTool) with optional progress parsing and console output.</summary>
 public class ProcessRunner
 {
     /// <summary>Runs a process and returns the result.</summary>

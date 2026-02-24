@@ -4,6 +4,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
+/// <summary>Downloads and runs the Visual Studio 2022 installer with the configured workload (e.g. SML .vsconfig).</summary>
 public class VisualStudioInstallerService
 {
     private readonly VisualStudioOptions _options;
@@ -22,12 +23,12 @@ public class VisualStudioInstallerService
 
     public async Task<bool> RunAsync()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "SMEH", "VS2022");
+        var tempDir = Path.Combine(CleanupService.TempRoot, "VS2022");
         Directory.CreateDirectory(tempDir);
         var bootstrapperPath = Path.Combine(tempDir, "vs_community.exe");
 
-        AnsiConsole.MarkupLine("[dim]Installing Visual Studio 2022 Community Edition (free).[/]");
-        AnsiConsole.MarkupLine("[dim]Downloading bootstrapper...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Visual Studio 2022 Community Edition (free).[/]");
+        AnsiConsole.MarkupLine($"[dim]Downloading bootstrapper...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
         await _downloadHelper.DownloadFileAsync(CommunityBootstrapperUrl, bootstrapperPath, progress);
         ConsoleProgressBar.Clear();
@@ -51,7 +52,7 @@ public class VisualStudioInstallerService
             if (string.IsNullOrEmpty(configFileName))
                 configFileName = "SML.vsconfig";
             configPath = Path.Combine(tempDir, configFileName);
-            AnsiConsole.MarkupLine("[dim]Downloading Visual Studio config (SML workload)...[/]");
+            AnsiConsole.MarkupLine($"[dim]Downloading Visual Studio config (SML workload)...[/]");
             var configProgress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Config"));
             await _downloadHelper.DownloadFileAsync(_options.ConfigFileUrl, configPath, configProgress);
             ConsoleProgressBar.Clear();
@@ -65,7 +66,7 @@ public class VisualStudioInstallerService
         if (hasConfig)
             arguments = $"--config \"{configPath}\" {arguments}";
 
-        AnsiConsole.MarkupLine("[dim]Running Visual Studio installer (this may take a long time)...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Running Visual Studio installer (this may take a long time)...[/]");
         var result = await _processRunner.RunAsync(bootstrapperPath, arguments, tempDir, waitForExit: true);
 
         if (result.ExitCode != 0)

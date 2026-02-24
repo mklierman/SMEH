@@ -17,7 +17,7 @@ var wwiseCliService = new WwiseCliService(options.WwiseCli, options.CssUnrealEng
 var starterProjectService = new StarterProjectService(options.StarterProject, options.CssUnrealEngine, downloadHelper, processRunner);
 var generateVsProjectService = new GenerateVsProjectService(options.CssUnrealEngine, options.WwiseCli, processRunner);
 var buildEditorService = new BuildEditorService(options.CssUnrealEngine, options.WwiseCli, processRunner);
-var openEditorService = new OpenEditorService(options.CssUnrealEngine, options.WwiseCli);
+var openEditorService = new OpenEditorService(options.WwiseCli);
 var cleanupService = new CleanupService();
 
 var version = Assembly.GetExecutingAssembly().GetName().Version;
@@ -68,8 +68,8 @@ while (true)
 
         if (!completed)
         {
-            // Only show "Invalid option" when the user's choice was not 1-10 (e.g. wrong key). When a valid option failed (e.g. folder not found), the service already showed the reason.
-            if (choice is not "1" and not "2" and not "3" and not "4" and not "5" and not "6" and not "7" and not "8" and not "9" and not "10")
+            // Only show "Invalid option" when the choice was not a menu option (e.g. wrong key). When a valid option failed, the service already showed the reason.
+            if (!MenuOptions.ValidChoices.Contains(choice))
                 AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.AccentHex}]Invalid option. Please choose 1-10 or 0 to exit.[/]");
         }
         else
@@ -136,7 +136,7 @@ static async Task<bool> RunAllAsync(SmehOptions options,
     AnsiConsole.WriteLine();
 
     // 1) Engine install path
-    const string defaultEnginePath = @"C:\Program Files\Unreal Engine - CSS";
+    var defaultEnginePath = AppDefaults.CssUnrealEngineInstallPath;
     AnsiConsole.MarkupLineInterpolated($"[dim]Default engine location: [white]{Markup.Escape(defaultEnginePath)}[/][/]");
     var engineChoice = AnsiConsole.Prompt(new SelectionPrompt<string>()
         .Title("Use this location or choose a custom path?")
@@ -149,7 +149,7 @@ static async Task<bool> RunAllAsync(SmehOptions options,
         var customEngine = AnsiConsole.Prompt(new TextPrompt<string>("Enter custom Unreal Engine install path (or press Enter to cancel):").AllowEmpty());
         if (string.IsNullOrWhiteSpace(customEngine))
         {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Cancelled.[/]");
             return false;
         }
         options.CssUnrealEngine.InstallPath = customEngine.Trim();
@@ -195,7 +195,7 @@ static async Task<bool> RunAllAsync(SmehOptions options,
                 AnsiConsole.MarkupLineInterpolated($"[red]Run all stopped: step {i + 1} ({Markup.Escape(steps[i].Name)}) failed.[/]");
                 return false;
             }
-            AnsiConsole.MarkupLineInterpolated($"[dim]  Completed in {FormatDuration(stepSw.Elapsed)}.[/]");
+            AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.FicsitOrange}]  Completed in {FormatDuration(stepSw.Elapsed)}.[/]");
             AnsiConsole.WriteLine();
         }
         totalSw.Stop();
@@ -207,7 +207,7 @@ static async Task<bool> RunAllAsync(SmehOptions options,
         AnsiConsole.WriteLine();
 
         // Automatically clean up temp files.
-        AnsiConsole.MarkupLine("[dim]Cleaning up temp files...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Cleaning up temp files...[/]");
         await cleanupService.RunAsync(skipConfirmation: true);
         AnsiConsole.WriteLine();
 
@@ -241,7 +241,7 @@ static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> ru
             completed = await run();
     }
     sw.Stop();
-    AnsiConsole.MarkupLineInterpolated($"[dim]Step took {FormatDuration(sw.Elapsed)}.[/]");
+    AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.FicsitOrange}]Step took {FormatDuration(sw.Elapsed)}.[/]");
     return completed;
 }
 
@@ -250,4 +250,9 @@ static string FormatDuration(TimeSpan elapsed)
     if (elapsed.TotalHours >= 1)
         return $"{(int)elapsed.TotalHours}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
     return $"{elapsed.Minutes}:{elapsed.Seconds:D2}";
+}
+
+file static class MenuOptions
+{
+    public static readonly HashSet<string> ValidChoices = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 }

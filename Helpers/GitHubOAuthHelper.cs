@@ -6,7 +6,7 @@ using Spectre.Console;
 
 namespace SMEH.Helpers;
 
-/// <summary>GitHub OAuth 2.0 device flow</summary>
+/// <summary>GitHub OAuth 2.0 device flow. Reserved for future use; not used by the app today — CssUnrealEngineService uses GitHub PAT (env SMEH_GITHUB_PAT or config) for private repo access.</summary>
 public static class GitHubOAuthHelper
 {
     private const string DeviceCodeUrl = "https://github.com/login/device/code";
@@ -55,7 +55,7 @@ public static class GitHubOAuthHelper
         AnsiConsole.MarkupLineInterpolated($"  2. Enter this code: [bold]{Markup.Escape(userCode!)}[/] (copied to clipboard)");
         AnsiConsole.MarkupLine("  3. Sign in with GitHub and authorize the app.");
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[dim]Waiting for you to authorize...[/]");
+        AnsiConsole.MarkupLine("[#fa9549]Waiting for you to authorize...[/]");
 
         // 2. Poll for access token
         var tokenPayload = new Dictionary<string, string>
@@ -197,6 +197,7 @@ public static class GitHubOAuthHelper
     private static void TryCopyToClipboard(string text)
     {
         if (string.IsNullOrEmpty(text)) return;
+        if (!OperatingSystem.IsWindows()) return;
         text = text.Trim();
         try
         {

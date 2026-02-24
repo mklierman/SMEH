@@ -5,6 +5,7 @@ using SMEH.Helpers;
 
 namespace SMEH.Services;
 
+/// <summary>Builds the FactoryEditor (Development Editor, Win64) via the CSS Unreal Engine Build.bat; menu option 8.</summary>
 public class BuildEditorService
 {
     private readonly CssUnrealEngineOptions _cssUnrealEngineOptions;
@@ -20,13 +21,13 @@ public class BuildEditorService
 
     public async Task<bool> RunAsync()
     {
-        var projectDir = ResolveStarterProjectPath();
+        var projectDir = ProjectPathHelper.ResolveStarterProjectPath(_wwiseCliOptions);
         if (string.IsNullOrEmpty(projectDir))
             return false;
 
         var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
         if (string.IsNullOrEmpty(cssPath))
-            cssPath = @"C:\Program Files\Unreal Engine - CSS";
+            cssPath = AppDefaults.CssUnrealEngineInstallPath;
         // If a starter project path is already known (via config or a previous
         // manual entry saved in SmehState), allow building the editor without
         // forcing the SMEH "previous steps" to be marked as completed. This lets
@@ -49,7 +50,7 @@ public class BuildEditorService
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
-            if (!TryPromptProjectPath(out projectDir, out uprojectPath))
+            if (!ProjectPathHelper.TryPromptProjectPath(out projectDir, out uprojectPath))
                 return false;
             SmehState.SetLastClonePath(projectDir!);
         }
@@ -59,7 +60,7 @@ public class BuildEditorService
         if (!File.Exists(buildBat))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]Build.bat not found at: {Markup.Escape(buildBat)}[/]");
-            if (!TryPromptEnginePath(ref cssPath))
+            if (!ProjectPathHelper.TryPromptEnginePath(ref cssPath))
                 return false;
             batchDir = Path.Combine(cssPath, "Engine", "Build", "BatchFiles");
             buildBat = Path.Combine(batchDir, "Build.bat");
@@ -72,7 +73,7 @@ public class BuildEditorService
 
         var fullUprojectPath = Path.GetFullPath(uprojectPath!);
         var args = $"FactoryEditor Win64 Development -Project=\"{fullUprojectPath}\" -WaitMutex -FromMsBuild";
-        AnsiConsole.MarkupLine("[dim]Building FactoryEditor (Development Editor, Win64)...[/]");
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Building FactoryEditor (Development Editor, Win64)...[/]");
         AnsiConsole.MarkupLineInterpolated($"[dim]Project: {Markup.Escape(fullUprojectPath)}[/]");
         var result = await _processRunner.RunWithProgressAsync(buildBat, args, batchDir, waitForExit: true, progressParser: ParseBuildProgress, progressTaskName: "FactoryEditor");
         if (result.ExitCode != 0)
@@ -98,84 +99,5 @@ public class BuildEditorService
         if (stepMatch.Success)
             return (int.Parse(stepMatch.Groups[1].Value), int.Parse(stepMatch.Groups[2].Value));
         return null;
-    }
-
-    private string? ResolveStarterProjectPath()
-    {
-        var path = _wwiseCliOptions.StarterProjectPath?.Trim();
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            return path;
-
-        path = SmehState.GetLastClonePath();
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            return path;
-
-        AnsiConsole.MarkupLine("[yellow]Starter project path not found. Run option 4 (Starter Project) first to clone the repo,[/]");
-        AnsiConsole.MarkupLine("[yellow]or enter the clone directory when prompted.[/]");
-        path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to SatisfactoryModLoader clone (or press Enter to cancel):")
-            .AllowEmpty());
-        if (string.IsNullOrEmpty(path?.Trim()))
-        {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
-            return null;
-        }
-        path = path.Trim();
-        if (!Directory.Exists(path))
-        {
-            AnsiConsole.MarkupLineInterpolated($"[red]Directory not found: {Markup.Escape(path)}[/]");
-            return null;
-        }
-        SmehState.SetLastClonePath(path);
-        return path;
-    }
-
-    private static bool TryPromptProjectPath(out string? projectDir, out string? uprojectPath)
-    {
-        projectDir = null;
-        uprojectPath = null;
-        var path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to project folder or to FactoryGame.uproject (or press Enter to cancel):")
-            .AllowEmpty());
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
-            return false;
-        }
-        path = path!.Trim();
-        if (File.Exists(path) && path.EndsWith("FactoryGame.uproject", StringComparison.OrdinalIgnoreCase))
-        {
-            projectDir = Path.GetDirectoryName(path);
-            uprojectPath = path;
-            return !string.IsNullOrEmpty(projectDir);
-        }
-        if (Directory.Exists(path))
-        {
-            uprojectPath = Path.Combine(path, "FactoryGame.uproject");
-            if (File.Exists(uprojectPath))
-            {
-                projectDir = path;
-                return true;
-            }
-        }
-        AnsiConsole.MarkupLine("[red]FactoryGame.uproject not found at that path.[/]");
-        return false;
-    }
-
-    private static bool TryPromptEnginePath(ref string cssPath)
-    {
-        var path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to CSS Unreal Engine installation (or press Enter to cancel):")
-            .AllowEmpty());
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
-            return false;
-        }
-        path = path!.Trim();
-        if (!Directory.Exists(path))
-        {
-            AnsiConsole.MarkupLineInterpolated($"[red]Directory not found: {Markup.Escape(path)}[/]");
-            return false;
-        }
-        cssPath = path;
-        return true;
     }
 }

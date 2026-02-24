@@ -1,23 +1,23 @@
 using System.Diagnostics;
 using Spectre.Console;
 using SMEH;
+using SMEH.Helpers;
 
 namespace SMEH.Services;
 
+/// <summary>Opens the project’s FactoryGame.uproject in the default application (Unreal Editor); menu option 9.</summary>
 public class OpenEditorService
 {
-    private readonly CssUnrealEngineOptions _cssUnrealEngineOptions;
     private readonly WwiseCliOptions _wwiseCliOptions;
 
-    public OpenEditorService(CssUnrealEngineOptions cssUnrealEngineOptions, WwiseCliOptions wwiseCliOptions)
+    public OpenEditorService(WwiseCliOptions wwiseCliOptions)
     {
-        _cssUnrealEngineOptions = cssUnrealEngineOptions;
         _wwiseCliOptions = wwiseCliOptions;
     }
 
     public Task<bool> RunAsync()
     {
-        var projectDir = ResolveStarterProjectPath();
+        var projectDir = ProjectPathHelper.ResolveStarterProjectPath(_wwiseCliOptions);
         if (string.IsNullOrEmpty(projectDir))
             return Task.FromResult(false);
 
@@ -25,7 +25,7 @@ public class OpenEditorService
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
-            if (!TryPromptProjectPath(out var promptedDir, out var promptedUproject))
+            if (!ProjectPathHelper.TryPromptProjectPath(out var promptedDir, out var promptedUproject))
             {
                 return Task.FromResult(false);
             }
@@ -58,63 +58,4 @@ public class OpenEditorService
         }
     }
 
-    private string? ResolveStarterProjectPath()
-    {
-        var path = _wwiseCliOptions.StarterProjectPath?.Trim();
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            return path;
-
-        path = SmehState.GetLastClonePath();
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            return path;
-
-        AnsiConsole.MarkupLine("[yellow]Starter project path not found. Run option 4 (Starter Project) first to clone the repo,[/]");
-        AnsiConsole.MarkupLine("[yellow]or enter the clone directory when prompted.[/]");
-        path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to SatisfactoryModLoader clone (or press Enter to cancel):")
-            .AllowEmpty());
-        if (string.IsNullOrEmpty(path?.Trim()))
-        {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
-            return null;
-        }
-        path = path.Trim();
-        if (!Directory.Exists(path))
-        {
-            AnsiConsole.MarkupLineInterpolated($"[red]Directory not found: {Markup.Escape(path)}[/]");
-            return null;
-        }
-        SmehState.SetLastClonePath(path);
-        return path;
-    }
-
-    private static bool TryPromptProjectPath(out string? projectDir, out string? uprojectPath)
-    {
-        projectDir = null;
-        uprojectPath = null;
-        var path = AnsiConsole.Prompt(new TextPrompt<string>("Enter path to project folder or to FactoryGame.uproject (or press Enter to cancel):")
-            .AllowEmpty());
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
-            return false;
-        }
-        path = path!.Trim();
-        if (File.Exists(path) && path.EndsWith("FactoryGame.uproject", StringComparison.OrdinalIgnoreCase))
-        {
-            projectDir = Path.GetDirectoryName(path);
-            uprojectPath = path;
-            return !string.IsNullOrEmpty(projectDir);
-        }
-        if (Directory.Exists(path))
-        {
-            uprojectPath = Path.Combine(path, "FactoryGame.uproject");
-            if (File.Exists(uprojectPath))
-            {
-                projectDir = path;
-                return true;
-            }
-        }
-        AnsiConsole.MarkupLine("[red]FactoryGame.uproject not found at that path.[/]");
-        return false;
-    }
 }
