@@ -1,0 +1,32 @@
+# Runs when you push a tag that starts with "v" (e.g. v1.0.0).
+# Builds the Windows exe and creates a GitHub Release with it attached.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: publish/SMEH.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
