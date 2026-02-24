@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using Spectre.Console;
 using SMEH;
@@ -181,20 +182,25 @@ static async Task<bool> RunAllAsync(SmehOptions options,
             ("6. Generate project files", () => generateVsProjectService.RunAsync()),
             ("7. Build Editor", () => buildEditorService.RunAsync())
         };
+        var totalSw = Stopwatch.StartNew();
         for (var i = 0; i < steps.Length; i++)
         {
             var (name, run) = (steps[i].Name, steps[i].Run);
             AnsiConsole.MarkupLineInterpolated($"[bold]Step {i + 1}/7: {Markup.Escape(name)}[/]");
+            var stepSw = Stopwatch.StartNew();
             var ok = await run();
+            stepSw.Stop();
             if (!ok)
             {
                 AnsiConsole.MarkupLineInterpolated($"[red]Run all stopped: step {i + 1} ({Markup.Escape(steps[i].Name)}) failed.[/]");
                 return false;
             }
+            AnsiConsole.MarkupLineInterpolated($"[dim]  Completed in {FormatDuration(stepSw.Elapsed)}.[/]");
             AnsiConsole.WriteLine();
         }
+        totalSw.Stop();
         AnsiConsole.WriteLine();
-        AnsiConsole.Write(new Panel("[green]✓ Run all completed successfully.[/]")
+        AnsiConsole.Write(new Panel(new Markup($"[green]Run all completed successfully.[/]\n[dim]Total time: {FormatDuration(totalSw.Elapsed)}[/]"))
             .Border(BoxBorder.Rounded)
             .BorderColor(SmehTheme.Accent)
             .Padding(1, 0));
@@ -217,17 +223,31 @@ static async Task<bool> RunAllAsync(SmehOptions options,
 
 static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> run, bool useDynamicDisplay = false)
 {
-    // Don't wrap in Status() when the operation uses its own dynamic display (e.g. Progress), to avoid Spectre.Console's "interactive functions concurrently" error.
+    var sw = Stopwatch.StartNew();
+    bool completed;
     if (useDynamicDisplay)
-        return await run();
-    var useSpinner = statusMessage.EndsWith("...", StringComparison.Ordinal);
-    if (useSpinner)
+        completed = await run();
+    else
     {
-        var completed = false;
-        await AnsiConsole.Status()
-            .Spinner(Spinner.Known.Dots)
-            .StartAsync(statusMessage, async _ => completed = await run());
-        return completed;
+        var useSpinner = statusMessage.EndsWith("...", StringComparison.Ordinal);
+        if (useSpinner)
+        {
+            completed = false;
+            await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync(statusMessage, async _ => completed = await run());
+        }
+        else
+            completed = await run();
     }
-    return await run();
+    sw.Stop();
+    AnsiConsole.MarkupLineInterpolated($"[dim]Step took {FormatDuration(sw.Elapsed)}.[/]");
+    return completed;
+}
+
+static string FormatDuration(TimeSpan elapsed)
+{
+    if (elapsed.TotalHours >= 1)
+        return $"{(int)elapsed.TotalHours}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+    return $"{elapsed.Minutes}:{elapsed.Seconds:D2}";
 }
