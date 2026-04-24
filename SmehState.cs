@@ -24,7 +24,6 @@ public static class SmehState
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SMEH");
 
     private static string LastClonePathFile => Path.Combine(StateDir, "last-clone-path.txt");
-    private static string GitHubTokenFile => Path.Combine(StateDir, "github-token.txt");
 
     public static void SetLastClonePath(string cloneDirectory)
     {
@@ -245,19 +244,4 @@ public static class SmehState
         return false;
     }
 
-    public static void SetGitHubAccessToken(string? token)
-    {
-        Directory.CreateDirectory(StateDir);
-        if (string.IsNullOrWhiteSpace(token))
-            File.Delete(GitHubTokenFile);
-        else
-            File.WriteAllText(GitHubTokenFile, token.Trim());
-    }
-
-    public static string? GetGitHubAccessToken()
-    {
-        if (!File.Exists(GitHubTokenFile)) return null;
-        var t = File.ReadAllText(GitHubTokenFile).Trim();
-        return string.IsNullOrEmpty(t) ? null : t;
-    }
 }

@@ -6,7 +6,7 @@ using Spectre.Console;
 
 namespace SMEH.Helpers;
 
-/// <summary>GitHub OAuth 2.0 device flow. Reserved for future use; not used by the app today — CssUnrealEngineService uses GitHub PAT (env SMEH_GITHUB_PAT or config) for private repo access.</summary>
+/// <summary>GitHub OAuth 2.0 device flow helper. Reserved for future use; not used by the app today.</summary>
 public static class GitHubOAuthHelper
 {
     private const string DeviceCodeUrl = "https://github.com/login/device/code";

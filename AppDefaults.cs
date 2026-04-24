@@ -47,10 +47,7 @@ public static class AppDefaults
             CssUnrealEngine = new CssUnrealEngineOptions
             {
                 Repository = CssUnrealEngineRepository,
-                DownloadUrl = "",
-                InstallPath = CssUnrealEngineInstallPath,
-                GitHubOAuthClientId = "",
-                GitHubPat = ""
+                InstallPath = CssUnrealEngineInstallPath
             },
             WwiseCli = new WwiseCliOptions
             {

@@ -31,15 +31,8 @@ public class CssUnrealEngineOptions
 {
     /// <summary>GitHub repo for custom Unreal Engine (e.g. satisfactorymodding/UnrealEngine). Latest release is used.</summary>
     public string Repository { get; set; } = "satisfactorymodding/UnrealEngine";
-    /// <summary>Optional: direct download URL override. If set, skips GitHub and downloads this single file (legacy).</summary>
-    public string DownloadUrl { get; set; } = "";
     /// <summary>Path where CSS Unreal Engine is or will be installed. Default is the installer default. Set this if you chose a different path during install.</summary>
     public string InstallPath { get; set; } = @"C:\Program Files\Unreal Engine - CSS";
-    /// <summary>GitHub OAuth App Client ID for device flow. Create one at https://github.com/settings/developers (no secret needed).
-    /// When asked for "Authorization callback URL", use: http://localhost (not used for device flow). Enables downloading from the private repo after you authorize in the browser (with 2FA).</summary>
-    public string GitHubOAuthClientId { get; set; } = "";
-    /// <summary>Optional fallback: GitHub Personal Access Token (PAT) with repo (and read:org if needed) scope. Used when no OAuth token is available. Prefer env var SMEH_GITHUB_PAT to avoid storing in config.</summary>
-    public string GitHubPat { get; set; } = "";
 }
 
 public class WwiseCliOptions
