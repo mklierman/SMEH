@@ -6,6 +6,7 @@ using SMEH.Helpers;
 using SMEH.Services;
 
 var options = AppDefaults.CreateOptions();
+SmehState.ClearLegacyPersistedState();
 
 var downloadHelper = new DownloadHelper();
 var processRunner = new ProcessRunner();

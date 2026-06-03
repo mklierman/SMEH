@@ -4,7 +4,7 @@ using Spectre.Console;
 
 namespace SMEH;
 
-/// <summary>Persists paths and detects installed steps (so the app can be closed and reopened between steps).</summary>
+/// <summary>Tracks paths for the current app run and detects installed steps.</summary>
 public static class SmehState
 {
     /// <summary>When true, run-all flow is active; services should skip interactive prompts and use pre-set paths.</summary>
@@ -20,22 +20,37 @@ public static class SmehState
     public const int StepStarterProject = 4;
     public const int StepWwise = 5;
 
-    private static string StateDir =>
+    private static string? LastClonePath { get; set; }
+
+    private static string LegacyStateDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SMEH");
 
-    private static string LastClonePathFile => Path.Combine(StateDir, "last-clone-path.txt");
+    private static string LegacyLastClonePathFile => Path.Combine(LegacyStateDir, "last-clone-path.txt");
+
+    public static void ClearLegacyPersistedState()
+    {
+        try
+        {
+            if (File.Exists(LegacyLastClonePathFile))
+                File.Delete(LegacyLastClonePathFile);
+
+            if (Directory.Exists(LegacyStateDir) && !Directory.EnumerateFileSystemEntries(LegacyStateDir).Any())
+                Directory.Delete(LegacyStateDir);
+        }
+        catch
+        {
+            // Best effort cleanup only. SMEH should still run if local app data is locked or unavailable.
+        }
+    }
 
     public static void SetLastClonePath(string cloneDirectory)
     {
-        Directory.CreateDirectory(StateDir);
-        File.WriteAllText(LastClonePathFile, cloneDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        LastClonePath = cloneDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 
     public static string? GetLastClonePath()
     {
-        if (!File.Exists(LastClonePathFile))
-            return null;
-        var path = File.ReadAllText(LastClonePathFile).Trim();
+        var path = LastClonePath?.Trim();
         return string.IsNullOrEmpty(path) ? null : path;
     }
 

@@ -29,7 +29,7 @@ public class BuildEditorService
         if (string.IsNullOrEmpty(cssPath))
             cssPath = AppDefaults.CssUnrealEngineInstallPath;
         // If a starter project path is already known (via config or a previous
-        // manual entry saved in SmehState), allow building the editor without
+        // manual entry from this app run), allow building the editor without
         // forcing the SMEH "previous steps" to be marked as completed. This lets
         // users who set paths manually still use step 8.
         var hasKnownStarterProjectPath =

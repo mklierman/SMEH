@@ -126,7 +126,7 @@ public class WwiseCliService
         // 1. Download SDK
         var sdkVersion = _options.SdkVersion.Trim();
         if (string.IsNullOrEmpty(sdkVersion))
-            sdkVersion = "2023.1.3.8471";
+            sdkVersion = "2023.1.14.8770";
         var emailArg = WwiseCredentialsHelper.QuoteForCli(_options.Email);
         var passwordArg = WwiseCredentialsHelper.QuoteForCli(_options.Password);
         var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --filter DeploymentPlatforms=Linux --filter DeploymentPlatforms= --email {emailArg} --password {passwordArg}";
@@ -155,7 +155,7 @@ public class WwiseCliService
         // 2. Integrate with Unreal project
         var integrationVersion = _options.IntegrationVersion.Trim();
         if (string.IsNullOrEmpty(integrationVersion))
-            integrationVersion = "2023.1.3.2970";
+            integrationVersion = "2023.1.14.3555";
         var integrateArgs = $"integrate-ue --email {emailArg} --password {passwordArg} --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
         AnsiConsole.MarkupLine($"[dim]Running: wwise-cli integrate-ue ... (output below)[/]");
         // Attach stdin to console so the child gets a real console and avoids 'The handle is invalid' from some tools when stdin is redirected.

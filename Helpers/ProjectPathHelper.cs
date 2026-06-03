@@ -10,7 +10,7 @@ namespace SMEH.Helpers;
 public static class ProjectPathHelper
 {
     /// <summary>
-    /// Resolves the SatisfactoryModLoader clone path from options, last clone state, or user prompt.
+    /// Resolves the SatisfactoryModLoader clone path from options, the current run's clone state, or user prompt.
     /// </summary>
     public static string? ResolveStarterProjectPath(WwiseCliOptions options)
     {

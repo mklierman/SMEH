@@ -42,7 +42,7 @@ public class WwiseCliOptions
     public string Repository { get; set; } = "mircearoata/wwise-cli";
     public string SdkVersion { get; set; } = "2023.1.14.8770";
     public string IntegrationVersion { get; set; } = "2023.1.14.3555";
-    /// <summary>Path to SatisfactoryModLoader clone (containing FactoryGame.uproject). If empty, uses last clone from option 5 or prompts.</summary>
+    /// <summary>Path to SatisfactoryModLoader clone (containing FactoryGame.uproject). If empty, uses the current run's option 5 clone or prompts.</summary>
     public string StarterProjectPath { get; set; } = "";
     public string Email { get; set; } = "";
     public string Password { get; set; } = "";
