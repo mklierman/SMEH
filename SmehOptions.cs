@@ -24,7 +24,7 @@ public class VisualStudioOptions
 
 public class ClangOptions
 {
-    public string InstallerUrl { get; set; } = "https://cdn.unrealengine.com/CrossToolchain_Linux/v22_clang-16.0.6-centos7.exe";
+    public string InstallerUrl { get; set; } = "https://cdn.unrealengine.com/CrossToolchain_Linux/v25_clang-18.1.0-rockylinux8.exe";
 }
 
 public class CssUnrealEngineOptions
@@ -40,10 +40,12 @@ public class WwiseCliOptions
     public bool UseLatest { get; set; } = true;
     public string ReleaseTag { get; set; } = "v0.2.2";
     public string Repository { get; set; } = "mircearoata/wwise-cli";
-    public string SdkVersion { get; set; } = "2023.1.3.8471";
-    public string IntegrationVersion { get; set; } = "2023.1.3.2970";
+    public string SdkVersion { get; set; } = "2023.1.14.8770";
+    public string IntegrationVersion { get; set; } = "2023.1.14.3555";
     /// <summary>Path to SatisfactoryModLoader clone (containing FactoryGame.uproject). If empty, uses last clone from option 5 or prompts.</summary>
     public string StarterProjectPath { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string Password { get; set; } = "";
 }
 
 public class StarterProjectOptions

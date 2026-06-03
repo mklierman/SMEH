@@ -25,15 +25,26 @@ public class VisualStudioInstallerService
     {
         var tempDir = Path.Combine(CleanupService.TempRoot, "VS2022");
         Directory.CreateDirectory(tempDir);
-        var bootstrapperPath = Path.Combine(tempDir, "vs_community.exe");
+        var configPath = await GetConfigPathAsync(tempDir);
+        var hasConfig = !string.IsNullOrEmpty(configPath) && File.Exists(configPath);
 
-        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Visual Studio 2022 Community Edition (free).[/]");
-        AnsiConsole.MarkupLine($"[dim]Downloading bootstrapper...[/]");
-        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
-        await _downloadHelper.DownloadFileAsync(CommunityBootstrapperUrl, bootstrapperPath, progress);
-        ConsoleProgressBar.Clear();
-        AnsiConsole.MarkupLine("[green]Download complete.[/]");
+        if (SmehState.TryGetVisualStudio2022InstallPath(out var installationPath) && !string.IsNullOrEmpty(installationPath))
+        {
+            AnsiConsole.MarkupLineInterpolated($"[green]Visual Studio 2022 is already installed at: {Markup.Escape(installationPath)}[/]");
+            if (!hasConfig)
+            {
+                AnsiConsole.MarkupLine("[yellow]No .vsconfig file was found or downloaded, so there is nothing to apply.[/]");
+                return true;
+            }
 
+            return await ApplyConfigToExistingInstallAsync(installationPath, configPath!, tempDir);
+        }
+
+        return await InstallCommunityAsync(tempDir, configPath, hasConfig);
+    }
+
+    private async Task<string?> GetConfigPathAsync(string tempDir)
+    {
         string? configPath = null;
         var localPath = _options.ConfigFilePath?.Trim();
         if (!string.IsNullOrEmpty(localPath))
@@ -59,7 +70,19 @@ public class VisualStudioInstallerService
             AnsiConsole.MarkupLine("[green]Config download complete.[/]");
         }
 
-        var hasConfig = !string.IsNullOrEmpty(configPath) && File.Exists(configPath);
+        return configPath;
+    }
+
+    private async Task<bool> InstallCommunityAsync(string tempDir, string? configPath, bool hasConfig)
+    {
+        var bootstrapperPath = Path.Combine(tempDir, "vs_community.exe");
+
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Visual Studio 2022 Community Edition (free).[/]");
+        AnsiConsole.MarkupLine($"[dim]Downloading bootstrapper...[/]");
+        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
+        await _downloadHelper.DownloadFileAsync(CommunityBootstrapperUrl, bootstrapperPath, progress);
+        ConsoleProgressBar.Clear();
+        AnsiConsole.MarkupLine("[green]Download complete.[/]");
 
         // Install: --passive (no interactive prompts), --wait (wait for exit), --norestart
         var arguments = "--passive --wait --norestart";
@@ -79,5 +102,43 @@ public class VisualStudioInstallerService
 
         AnsiConsole.MarkupLine("[green]Visual Studio 2022 installation finished successfully.[/]");
         return true;
+    }
+
+    private async Task<bool> ApplyConfigToExistingInstallAsync(string installationPath, string configPath, string tempDir)
+    {
+        var installerPath = GetVisualStudioInstallerPath();
+        if (!File.Exists(installerPath))
+        {
+            AnsiConsole.MarkupLine("[yellow]Visual Studio Installer was not found. Downloading the VS 2022 Community bootstrapper to apply the config.[/]");
+            installerPath = Path.Combine(tempDir, "vs_community.exe");
+            var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
+            await _downloadHelper.DownloadFileAsync(CommunityBootstrapperUrl, installerPath, progress);
+            ConsoleProgressBar.Clear();
+            AnsiConsole.MarkupLine("[green]Download complete.[/]");
+        }
+
+        var arguments = $"modify --installPath \"{installationPath}\" --config \"{configPath}\" --passive --wait --norestart";
+        AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Applying Visual Studio config (SML workload) to the existing installation...[/]");
+        var result = await _processRunner.RunAsync(installerPath, arguments, tempDir, waitForExit: true);
+
+        if (result.ExitCode != 0)
+        {
+            AnsiConsole.MarkupLineInterpolated($"[yellow]Visual Studio config apply exited with code {result.ExitCode}.[/]");
+            if (!string.IsNullOrEmpty(result.StdError))
+                AnsiConsole.WriteLine("Stderr: " + result.StdError);
+            return false;
+        }
+
+        AnsiConsole.MarkupLine("[green]Visual Studio config applied successfully.[/]");
+        return true;
+    }
+
+    private static string GetVisualStudioInstallerPath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            "Microsoft Visual Studio",
+            "Installer",
+            "setup.exe");
     }
 }

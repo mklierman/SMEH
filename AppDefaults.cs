@@ -8,7 +8,7 @@ public static class AppDefaults
     public const string VisualStudioConfigFileUrl = "https://docs.ficsit.app/satisfactory-modding/latest/_attachments/BeginnersGuide/dependencies/SML.vsconfig";
 
     // Clang
-    public const string ClangInstallerUrl = "https://cdn.unrealengine.com/CrossToolchain_Linux/v22_clang-16.0.6-centos7.exe";
+    public const string ClangInstallerUrl = "https://cdn.unrealengine.com/CrossToolchain_Linux/v25_clang-18.1.0-rockylinux8.exe";
 
     // DirectX End-User Runtime (XINPUT1_3.dll and other legacy components; required for UnrealVersionSelector and editor)
     public const string DirectXWebInstallerUrl = "https://download.microsoft.com/download/1/7/1/1718ccc4-6315-4d8e-9543-8e28a4e18c4c/dxwebsetup.exe";

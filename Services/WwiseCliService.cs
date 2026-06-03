@@ -29,6 +29,9 @@ public class WwiseCliService
 
     public async Task<bool> RunAsync()
     {
+        if (!WwiseCredentialsHelper.Ensure(_options))
+            return false;
+
         var repo = _options.Repository.Trim();
         if (string.IsNullOrEmpty(repo))
         {
@@ -124,12 +127,18 @@ public class WwiseCliService
         var sdkVersion = _options.SdkVersion.Trim();
         if (string.IsNullOrEmpty(sdkVersion))
             sdkVersion = "2023.1.3.8471";
-        var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --filter DeploymentPlatforms=Linux --filter DeploymentPlatforms= --email \"\" --password \"\"";
+        var emailArg = WwiseCredentialsHelper.QuoteForCli(_options.Email);
+        var passwordArg = WwiseCredentialsHelper.QuoteForCli(_options.Password);
+        var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --filter DeploymentPlatforms=Linux --filter DeploymentPlatforms= --email {emailArg} --password {passwordArg}";
         AnsiConsole.MarkupLine($"[dim]Running: wwise-cli download ... (output below)[/]");
         var downloadResult = await _processRunner.RunWithConsoleOutputAsync(exePath, downloadArgs, workingDir, waitForExit: true, sendInputWhenLine: line =>
         {
-            if (line != null && (line.Contains("Enter Wwise email:", StringComparison.OrdinalIgnoreCase) || line.Contains("Enter Wwise password:", StringComparison.OrdinalIgnoreCase)))
-                return "";
+            if (line == null)
+                return null;
+            if (line.Contains("Enter Wwise email:", StringComparison.OrdinalIgnoreCase))
+                return _options.Email;
+            if (line.Contains("Enter Wwise password:", StringComparison.OrdinalIgnoreCase))
+                return _options.Password;
             return null;
         });
         if (downloadResult.ExitCode != 0)
@@ -147,7 +156,7 @@ public class WwiseCliService
         var integrationVersion = _options.IntegrationVersion.Trim();
         if (string.IsNullOrEmpty(integrationVersion))
             integrationVersion = "2023.1.3.2970";
-        var integrateArgs = $"integrate-ue --email \"\" --password \"\" --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
+        var integrateArgs = $"integrate-ue --email {emailArg} --password {passwordArg} --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
         AnsiConsole.MarkupLine($"[dim]Running: wwise-cli integrate-ue ... (output below)[/]");
         // Attach stdin to console so the child gets a real console and avoids 'The handle is invalid' from some tools when stdin is redirected.
         var integrateResult = await _processRunner.RunWithConsoleOutputAsync(exePath, integrateArgs, workingDir, waitForExit: true, attachStdinToConsole: true, heartbeatInterval: TimeSpan.FromSeconds(30), heartbeatMessage: "Integrate step still running...");

@@ -61,8 +61,9 @@ public static class SmehState
         }
     }
 
-    private static bool IsVisualStudio2022Installed()
+    public static bool TryGetVisualStudio2022InstallPath(out string? installationPath)
     {
+        installationPath = null;
         var vswhere = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
             "Microsoft Visual Studio", "Installer", "vswhere.exe");
@@ -73,7 +74,7 @@ public static class SmehState
             using var process = Process.Start(new ProcessStartInfo
             {
                 FileName = vswhere,
-                Arguments = "-latest -products * -property installationPath",
+                Arguments = "-latest -version [17.0,18.0) -products * -property installationPath",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 CreateNoWindow = true
@@ -82,11 +83,9 @@ public static class SmehState
             var path = process.StandardOutput.ReadToEnd().Trim();
             process.WaitForExit(5000);
             if (process.ExitCode != 0 || string.IsNullOrEmpty(path)) return false;
-            // VS 2022 is version 17.x; vswhere -latest on a 2022 install returns its path
-            var versionFile = Path.Combine(path, "Common7", "IDE", "devenv.isolation.ini");
-            if (!File.Exists(versionFile)) return Directory.Exists(path);
-            var content = File.ReadAllText(versionFile);
-            return content.Contains("17.", StringComparison.Ordinal);
+            if (!Directory.Exists(path)) return false;
+            installationPath = path;
+            return true;
         }
         catch
         {
@@ -94,8 +93,10 @@ public static class SmehState
         }
     }
 
+    private static bool IsVisualStudio2022Installed() => TryGetVisualStudio2022InstallPath(out _);
+
     private const string DefaultClangToolchainsPath = @"C:\UnrealToolchains";
-    private const string DefaultClangToolchainSubdir = "v22_clang-16.0.6-centos7";
+    private const string DefaultClangToolchainSubdir = "v25_clang-18.1.0-rockylinux8";
 
     private static bool IsClangToolchainInstalled()
     {
@@ -109,7 +110,7 @@ public static class SmehState
             return false;
         foreach (var subDir in Directory.EnumerateDirectories(DefaultClangToolchainsPath))
         {
-            if (Path.GetFileName(subDir).StartsWith("v22_clang-", StringComparison.OrdinalIgnoreCase) && HasValidClangToolchainAt(subDir))
+            if (Path.GetFileName(subDir).StartsWith("v25_clang-", StringComparison.OrdinalIgnoreCase) && HasValidClangToolchainAt(subDir))
                 return true;
         }
         return false;

@@ -30,6 +30,9 @@ public class StarterProjectService
 
     public async Task<bool> RunAsync()
     {
+        if (!SmehState.RunAllUnattended)
+            StarterProjectBranchHelper.Prompt(_options);
+
         var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine }, cssUnrealEnginePath: string.IsNullOrEmpty(cssPath) ? null : cssPath))
             return false;

@@ -132,7 +132,7 @@ static async Task<bool> RunAllAsync(SmehOptions options,
     BuildEditorService buildEditorService,
     CleanupService cleanupService)
 {
-    AnsiConsole.MarkupLine("[bold]Run all (unattended)[/] — all input is collected now; then steps 1–7 run in order without further prompts.");
+    AnsiConsole.MarkupLine("[bold]Run all (unattended)[/] — engine path, SML branch, starter project folder, and Wwise credentials are collected now; then steps 1–7 run without further prompts.");
     AnsiConsole.WriteLine();
 
     // 1) Engine install path
@@ -155,7 +155,10 @@ static async Task<bool> RunAllAsync(SmehOptions options,
         options.CssUnrealEngine.InstallPath = customEngine.Trim();
     }
 
-    // 2) Starter project base path (e.g. C:\Modding → clone will be C:\Modding\SatisfactoryModLoader)
+    // 2) SatisfactoryModLoader branch
+    StarterProjectBranchHelper.Prompt(options.StarterProject);
+
+    // 3) Starter project base path (e.g. C:\Modding → clone will be C:\Modding\SatisfactoryModLoader)
     var starterBase = AnsiConsole.Prompt(new TextPrompt<string>("Enter folder for starter project (e.g. C:\\Modding). SatisfactoryModLoader will be cloned here:")
         .AllowEmpty());
     if (string.IsNullOrWhiteSpace(starterBase?.Trim()))
@@ -166,6 +169,8 @@ static async Task<bool> RunAllAsync(SmehOptions options,
     starterBase = starterBase!.Trim();
     options.StarterProject.DefaultClonePath = starterBase;
     options.WwiseCli.StarterProjectPath = Path.Combine(starterBase, "SatisfactoryModLoader");
+
+    WwiseCredentialsHelper.Ensure(options.WwiseCli);
 
     AnsiConsole.WriteLine();
 

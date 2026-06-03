@@ -21,8 +21,7 @@ public class CssUnrealEngineService
     private const string UnrealEngineInstallerArgs = "/SILENT /NORESTART";
     private static readonly string DefaultInstallPath = AppDefaults.CssUnrealEngineInstallPath;
     private const string ManualInstallExe = "UnrealEngine-CSS-Editor-Win64.exe";
-    private const string ManualInstallBin1 = "UnrealEngine-CSS-Editor-Win64-1.bin";
-    private const string ManualInstallBin2 = "UnrealEngine-CSS-Editor-Win64-2.bin";
+    private const string ManualInstallBinPattern = "UnrealEngine-CSS-Editor-Win64-*.bin";
 
     private async Task RunDirectXAndVcRedistAsync()
     {
@@ -79,10 +78,10 @@ public class CssUnrealEngineService
         }
 
         AnsiConsole.WriteLine();
-        var releasesUrl = $"https://github.com/{repo}/releases/latest";
+        const string releasesUrl = "https://github.com/satisfactorymodding/UnrealEngine/releases";
         AnsiConsole.MarkupLine("Download and install the engine yourself:");
         AnsiConsole.MarkupLineInterpolated($"  1. Open: [link={releasesUrl}]releases[/]");
-        AnsiConsole.MarkupLine("  2. Download the .exe and .bin files (e.g. UnrealEngine-CSS-Editor-Win64.exe and its .bin parts).");
+        AnsiConsole.MarkupLine("  2. Download the .exe and all matching .bin part files (for example, UnrealEngine-CSS-Editor-Win64.exe and UnrealEngine-CSS-Editor-Win64-*.bin).");
         AnsiConsole.WriteLine();
         var runNow = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Have you downloaded all the files? Do you want to run the installer?")
@@ -136,7 +135,7 @@ public class CssUnrealEngineService
         return args;
     }
 
-    /// <summary>Asks if the user wants to delete Unreal Engine installer files (exe + .bin). Uses LastUnrealEngineInstallerFolder when set (run-all Manual path); otherwise skips. Used at end of run-all.</summary>
+    /// <summary>Asks if the user wants to delete Unreal Engine installer files (exe + matching .bin parts). Uses LastUnrealEngineInstallerFolder when set (run-all Manual path); otherwise skips. Used at end of run-all.</summary>
     public static void OfferToDeleteEngineInstallerFiles()
     {
         var folder = SmehState.LastUnrealEngineInstallerFolder?.Trim();
@@ -152,7 +151,7 @@ public class CssUnrealEngineService
         SmehState.LastUnrealEngineInstallerFolder = null;
         if (choice != "Yes")
             return;
-        var filePaths = new[] { Path.Combine(folder, ManualInstallExe), Path.Combine(folder, ManualInstallBin1), Path.Combine(folder, ManualInstallBin2) };
+        var filePaths = GetManualInstallFilePaths(folder);
         foreach (var path in filePaths)
         {
             try
@@ -198,17 +197,32 @@ public class CssUnrealEngineService
         }
     }
 
-    /// <summary>Returns true if folder contains the exact exe and both .bin files from the manual install set.</summary>
+    /// <summary>Returns true if folder contains the installer exe and at least one matching .bin part.</summary>
     private static bool HasManualInstallFiles(string folder, out string? exePath)
     {
         exePath = null;
         var exe = Path.Combine(folder, ManualInstallExe);
-        var bin1 = Path.Combine(folder, ManualInstallBin1);
-        var bin2 = Path.Combine(folder, ManualInstallBin2);
-        if (!File.Exists(exe) || !File.Exists(bin1) || !File.Exists(bin2))
+        if (!File.Exists(exe) || GetManualInstallBinPaths(folder).Count == 0)
             return false;
         exePath = exe;
         return true;
+    }
+
+    private static IReadOnlyList<string> GetManualInstallBinPaths(string folder)
+    {
+        if (!Directory.Exists(folder))
+            return Array.Empty<string>();
+
+        return Directory.GetFiles(folder, ManualInstallBinPattern)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<string> GetManualInstallFilePaths(string folder)
+    {
+        var files = new List<string> { Path.Combine(folder, ManualInstallExe) };
+        files.AddRange(GetManualInstallBinPaths(folder));
+        return files;
     }
 
     /// <summary>Gets the folder containing the manually downloaded installer: tries Downloads first, then prompts.</summary>
@@ -240,7 +254,7 @@ public class CssUnrealEngineService
         }
         if (!HasManualInstallFiles(folder, out _))
         {
-            AnsiConsole.MarkupLine($"[red]Folder must contain exactly: [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64.exe[/], [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64-1.bin[/], and [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64-2.bin[/].[/]");
+            AnsiConsole.MarkupLine($"[red]Folder must contain [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64.exe[/] and all matching [{SmehTheme.FicsitOrange}]UnrealEngine-CSS-Editor-Win64-*.bin[/] part files.[/]");
             return null;
         }
         return folder;
@@ -265,12 +279,7 @@ public class CssUnrealEngineService
         {
             AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
             if (!SmehState.RunAllUnattended)
-                OfferToDeleteInstallerFiles(new[]
-                {
-                    Path.Combine(folder, ManualInstallExe),
-                    Path.Combine(folder, ManualInstallBin1),
-                    Path.Combine(folder, ManualInstallBin2)
-                });
+                OfferToDeleteInstallerFiles(GetManualInstallFilePaths(folder));
         }
         return result.ExitCode == 0;
     }

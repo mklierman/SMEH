@@ -41,7 +41,7 @@ public class ClangInstallerService
         if (installerUrlOrPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || installerUrlOrPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             var tempDir = Path.Combine(CleanupService.TempRoot, "Clang");
-            installerPath = Path.Combine(tempDir, "v22_clang-16.0.6-centos7.exe");
+            installerPath = Path.Combine(tempDir, "v25_clang-18.1.0-rockylinux8.exe");
             AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Clang installer...[/]");
             var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Clang"));
             await _downloadHelper.DownloadFileAsync(installerUrlOrPath, installerPath, progress);
