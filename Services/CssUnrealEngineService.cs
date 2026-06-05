@@ -4,7 +4,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
-/// <summary>Downloads and installs the CSS (Custom Source Satisfactory) Unreal Engine build; menu option 2. Runs DirectX and VC Redist installers as prerequisites.</summary>
+/// <summary>Downloads and installs the CSS (Custom Source Satisfactory) Unreal Engine build </summary>
 public class CssUnrealEngineService
 {
     private readonly CssUnrealEngineOptions _options;
@@ -20,8 +20,6 @@ public class CssUnrealEngineService
 
     private const string UnrealEngineInstallerArgs = "/SILENT /NORESTART";
     private static readonly string DefaultInstallPath = AppDefaults.CssUnrealEngineInstallPath;
-    private const string ManualInstallExe = "UnrealEngine-CSS-Editor-Win64.exe";
-    private const string ManualInstallBinPattern = "UnrealEngine-CSS-Editor-Win64-*.bin";
 
     private async Task RunDirectXAndVcRedistAsync()
     {
@@ -60,12 +58,11 @@ public class CssUnrealEngineService
         }
 
         // Custom Unreal Engine is in a private repo; user must complete linking first.
-        const string linkingDocsUrl = "https://docs.ficsit.app/satisfactory-modding/latest/Development/BeginnersGuide/dependencies.html#_link_your_github_as_an_epic_games_developer_account";
         AnsiConsole.MarkupLine("The Custom Unreal Engine is in a [yellow]private repository[/]. Before continuing you must:");
         AnsiConsole.MarkupLine("  1. Link your GitHub account as an Epic Games developer account");
         AnsiConsole.MarkupLine("  2. Link your GitHub account to the Satisfactory Modding repository (Unreal Linker)");
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLineInterpolated($"Full instructions: [link={linkingDocsUrl}]documentation[/]");
+        AnsiConsole.MarkupLineInterpolated($"Full instructions: [link={AppDefaults.CssUnrealEngineLinkingDocsUrl}]documentation[/]");
         AnsiConsole.WriteLine();
         var confirm = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Have you completed the linking process?")
@@ -78,9 +75,8 @@ public class CssUnrealEngineService
         }
 
         AnsiConsole.WriteLine();
-        const string releasesUrl = "https://github.com/satisfactorymodding/UnrealEngine/releases";
         AnsiConsole.MarkupLine("Download and install the engine yourself:");
-        AnsiConsole.MarkupLineInterpolated($"  1. Open: [link={releasesUrl}]releases[/]");
+        AnsiConsole.MarkupLineInterpolated($"  1. Open: [link={AppDefaults.CssUnrealEngineReleasesUrl}]releases[/]");
         AnsiConsole.MarkupLine("  2. Download the .exe and all matching .bin part files (for example, UnrealEngine-CSS-Editor-Win64.exe and UnrealEngine-CSS-Editor-Win64-*.bin).");
         AnsiConsole.WriteLine();
         var runNow = AnsiConsole.Prompt(new SelectionPrompt<string>()
@@ -201,7 +197,7 @@ public class CssUnrealEngineService
     private static bool HasManualInstallFiles(string folder, out string? exePath)
     {
         exePath = null;
-        var exe = Path.Combine(folder, ManualInstallExe);
+        var exe = Path.Combine(folder, AppDefaults.CssUnrealEngineInstallerFileName);
         if (!File.Exists(exe) || GetManualInstallBinPaths(folder).Count == 0)
             return false;
         exePath = exe;
@@ -213,14 +209,14 @@ public class CssUnrealEngineService
         if (!Directory.Exists(folder))
             return Array.Empty<string>();
 
-        return Directory.GetFiles(folder, ManualInstallBinPattern)
+        return Directory.GetFiles(folder, AppDefaults.CssUnrealEngineInstallerBinPattern)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
     private static IReadOnlyList<string> GetManualInstallFilePaths(string folder)
     {
-        var files = new List<string> { Path.Combine(folder, ManualInstallExe) };
+        var files = new List<string> { Path.Combine(folder, AppDefaults.CssUnrealEngineInstallerFileName) };
         files.AddRange(GetManualInstallBinPaths(folder));
         return files;
     }
@@ -269,7 +265,7 @@ public class CssUnrealEngineService
             AnsiConsole.MarkupLine("[red]Installer files not found.[/]");
             return false;
         }
-        AnsiConsole.MarkupLineInterpolated($"[dim]Running installer: {Markup.Escape(ManualInstallExe)}[/]");
+        AnsiConsole.MarkupLineInterpolated($"[dim]Running installer: {Markup.Escape(AppDefaults.CssUnrealEngineInstallerFileName)}[/]");
         if (!PromptInstallPath())
             return false;
         var result = await _processRunner.RunAsync(exePath, GetInstallerArgs(_options.InstallPath), folder, waitForExit: true);

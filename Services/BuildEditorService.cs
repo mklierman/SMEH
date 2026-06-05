@@ -5,7 +5,7 @@ using SMEH.Helpers;
 
 namespace SMEH.Services;
 
-/// <summary>Builds the FactoryEditor (Development Editor, Win64) via the CSS Unreal Engine Build.bat; menu option 8.</summary>
+/// <summary>Builds the FactoryEditor (Development Editor, Win64) via the CSS Unreal Engine Build.bat</summary>
 public class BuildEditorService
 {
     private readonly CssUnrealEngineOptions _cssUnrealEngineOptions;
@@ -25,13 +25,7 @@ public class BuildEditorService
         if (string.IsNullOrEmpty(projectDir))
             return false;
 
-        var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
-        if (string.IsNullOrEmpty(cssPath))
-            cssPath = AppDefaults.CssUnrealEngineInstallPath;
-        // If a starter project path is already known (via config or a previous
-        // manual entry from this app run), allow building the editor without
-        // forcing the SMEH "previous steps" to be marked as completed. This lets
-        // users who set paths manually still use step 8.
+        var cssPath = _cssUnrealEngineOptions.EffectiveInstallPath;
         var hasKnownStarterProjectPath =
             !string.IsNullOrWhiteSpace(_wwiseCliOptions.StarterProjectPath) ||
             !string.IsNullOrEmpty(SmehState.GetLastClonePath());
@@ -46,7 +40,7 @@ public class BuildEditorService
             }
         }
 
-        var uprojectPath = Path.Combine(projectDir, "FactoryGame.uproject");
+        var uprojectPath = Path.Combine(projectDir, AppDefaults.StarterProjectFileName);
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");

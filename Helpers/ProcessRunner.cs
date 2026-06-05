@@ -47,7 +47,6 @@ public class ProcessRunner
         return new ProcessRunResult(process.ExitCode, stdout.ToString().TrimEnd(), stderr.ToString().TrimEnd());
     }
 
-    /// <summary>Runs a process and streams stdout and stderr to the console in real time. If sendInputWhenLine is set, when a line matches it returns the string to send to stdin. If sendInputAfterDelayMs and sendInputAfterDelay are set, that string is sent to stdin after the delay. If attachStdinToConsole is true, stdin is not redirected so the child gets the real console (avoids "handle is invalid" from some tools). If heartbeatInterval and heartbeatMessage are set, prints the message periodically while waiting.</summary>
     public async Task<ProcessRunResult> RunWithConsoleOutputAsync(string fileName, string? arguments = null, string? workingDirectory = null, bool waitForExit = true, Func<string, string?>? sendInputWhenLine = null, int? sendInputAfterDelayMs = null, string? sendInputAfterDelay = null, bool attachStdinToConsole = false, TimeSpan? heartbeatInterval = null, string? heartbeatMessage = null)
     {
         var redirectStdin = !attachStdinToConsole && (sendInputWhenLine != null || (sendInputAfterDelayMs.HasValue && !string.IsNullOrEmpty(sendInputAfterDelay)));
@@ -119,7 +118,6 @@ public class ProcessRunner
         return new ProcessRunResult(process.ExitCode, stdout.ToString().TrimEnd(), stderr.ToString().TrimEnd());
     }
 
-    /// <summary>Runs a process and shows a progress bar by parsing stdout/stderr with the given parser. Output is captured but not streamed; use the result to display output on failure.</summary>
     public async Task<ProcessRunResult> RunWithProgressAsync(string fileName, string? arguments = null, string? workingDirectory = null, bool waitForExit = true, Func<string, (int current, int total)?>? progressParser = null, string progressTaskName = "Building...")
     {
         var psi = new ProcessStartInfo
@@ -214,7 +212,6 @@ public class ProcessRunner
         return new ProcessRunResult(process.ExitCode, stdout.ToString().TrimEnd(), stderr.ToString().TrimEnd());
     }
 
-    /// <summary>True if the current process is running with administrator privileges (e.g. user ran SMEH as admin).</summary>
     public static bool IsRunningElevated()
     {
         if (!OperatingSystem.IsWindows())
@@ -231,7 +228,6 @@ public class ProcessRunner
         }
     }
 
-    /// <summary>Runs a process with elevated privileges (admin). Use for installers that require it. Triggers UAC on Windows. Output is not captured.</summary>
     public async Task<ProcessRunResult> RunElevatedAsync(string fileName, string? arguments = null, string? workingDirectory = null, bool waitForExit = true)
     {
         var psi = new ProcessStartInfo
@@ -295,7 +291,7 @@ public class ProcessRunner
     }
 }
 
-/// <summary>Progress column that displays current/max (e.g. 5/319) after the percentage.</summary>
+/// <summary>Progress column that displays current/max after the percentage.</summary>
 internal sealed class ProgressCountColumn : ProgressColumn
 {
     public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan elapsedTime)

@@ -4,7 +4,7 @@ using SMEH.Helpers;
 
 namespace SMEH.Services;
 
-/// <summary>Generates Visual Studio solution and project files for the starter project via UnrealBuildTool; menu option 7.</summary>
+/// <summary>Generates Visual Studio solution and project files for the starter project via UnrealBuildTool</summary>
 public class GenerateVsProjectService
 {
     private readonly CssUnrealEngineOptions _cssUnrealEngineOptions;
@@ -24,14 +24,7 @@ public class GenerateVsProjectService
         if (string.IsNullOrEmpty(projectDir))
             return false;
 
-        var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
-        if (string.IsNullOrEmpty(cssPath))
-            cssPath = AppDefaults.CssUnrealEngineInstallPath;
-        // For generating Visual Studio project files, we only require
-        // Visual Studio, Clang, and CSS Unreal Engine. If the user has
-        // provided a valid starter project path (either via config or
-        // this prompt), we do NOT force step 4 (Starter Project) to have
-        // been run via SMEH itself.
+        var cssPath = _cssUnrealEngineOptions.EffectiveInstallPath;
         if (!SmehState.EnsureStepsCompleted(
                 new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine },
                 projectDir,
@@ -40,7 +33,7 @@ public class GenerateVsProjectService
             return false;
         }
 
-        var uprojectPath = Path.Combine(projectDir, "FactoryGame.uproject");
+        var uprojectPath = Path.Combine(projectDir, AppDefaults.StarterProjectFileName);
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");

@@ -4,7 +4,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
-/// <summary>Downloads and installs the Clang cross-toolchain used by Unreal Engine; menu option 4.</summary>
+/// <summary>Downloads and installs the Clang cross-toolchain used by Unreal Engine</summary>
 public class ClangInstallerService
 {
     private readonly ClangOptions _options;
@@ -41,7 +41,7 @@ public class ClangInstallerService
         if (installerUrlOrPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || installerUrlOrPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             var tempDir = Path.Combine(CleanupService.TempRoot, "Clang");
-            installerPath = Path.Combine(tempDir, "v25_clang-18.1.0-rockylinux8.exe");
+            installerPath = Path.Combine(tempDir, AppDefaults.ClangInstallerFileName);
             AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Clang installer...[/]");
             var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Clang"));
             await _downloadHelper.DownloadFileAsync(installerUrlOrPath, installerPath, progress);

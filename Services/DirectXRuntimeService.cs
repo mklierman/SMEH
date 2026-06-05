@@ -26,7 +26,7 @@ public class DirectXRuntimeService
 
         var tempDir = Path.Combine(CleanupService.TempRoot, "DirectX");
         Directory.CreateDirectory(tempDir);
-        var installerPath = Path.Combine(tempDir, "dxwebsetup.exe");
+        var installerPath = Path.Combine(tempDir, AppDefaults.DirectXWebInstallerFileName);
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading DirectX End-User Runtime Web Installer...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "DirectX"));
@@ -46,7 +46,6 @@ public class DirectXRuntimeService
             AnsiConsole.MarkupLine($"[dim]You may see a UAC prompt to allow administrator access. This is required for DirectX install.[/]");
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]This may take a few minutes. The installer may show a progress window.[/]");
 
-        // /Q = quiet install. On Windows, run elevated unless we're already admin (then child inherits; no second UAC).
         var result = OperatingSystem.IsWindows() && !alreadyElevated
             ? await _processRunner.RunElevatedAsync(installerPath, "/Q", tempDir, waitForExit: true)
             : await _processRunner.RunAsync(installerPath, "/Q", tempDir, waitForExit: true);
@@ -68,7 +67,6 @@ public class DirectXRuntimeService
         return true;
     }
 
-    /// <summary>Returns true if XINPUT1_3.dll (from DirectX End-User Runtime) is present in system directories.</summary>
     private static bool IsDirectXEndUserRuntimeInstalled()
     {
         var systemDir = Environment.SystemDirectory;

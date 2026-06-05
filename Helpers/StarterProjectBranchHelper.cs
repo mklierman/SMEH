@@ -5,8 +5,8 @@ namespace SMEH.Helpers;
 /// <summary>Prompts for SatisfactoryModLoader clone branch (master or dev).</summary>
 public static class StarterProjectBranchHelper
 {
-    public const string Master = "master";
-    public const string Dev = "dev";
+    public const string Master = AppDefaults.StarterProjectBranch;
+    public const string Dev = AppDefaults.StarterProjectDevBranch;
 
     public static void Prompt(StarterProjectOptions options)
     {

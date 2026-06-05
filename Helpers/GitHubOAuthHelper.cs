@@ -6,7 +6,7 @@ using Spectre.Console;
 
 namespace SMEH.Helpers;
 
-/// <summary>GitHub OAuth 2.0 device flow helper. Reserved for future use; not used by the app today.</summary>
+/// <summary>GitHub OAuth 2.0 device flow helper.</summary>
 public static class GitHubOAuthHelper
 {
     private const string DeviceCodeUrl = "https://github.com/login/device/code";
@@ -18,7 +18,6 @@ public static class GitHubOAuthHelper
         DefaultRequestHeaders = { UserAgent = { new ProductInfoHeaderValue("SMEH", "1.0") } }
     };
 
-    /// <summary>Runs the device flow: shows user the URL and code, polls until they authorize, returns the access token or null.</summary>
     public static async Task<string?> RunDeviceFlowAsync(string clientId, CancellationToken cancellationToken = default)
     {
         // 1. Request device code
@@ -142,7 +141,6 @@ public static class GitHubOAuthHelper
             }
         }
 
-        // Fallback: form-urlencoded (e.g. device_code=xxx&user_code=yyy)
         var parsed = ParseFormUrlEncoded(body);
         if (parsed.TryGetValue("device_code", out var dcVal)) deviceCode = dcVal;
         if (parsed.TryGetValue("user_code", out var ucVal)) userCode = ucVal;
@@ -201,7 +199,6 @@ public static class GitHubOAuthHelper
         text = text.Trim();
         try
         {
-            // PowerShell avoids the trailing newline that "echo X | clip" adds
             var escaped = text.Replace("'", "''");
             using var process = Process.Start(new ProcessStartInfo
             {
@@ -214,7 +211,7 @@ public static class GitHubOAuthHelper
         }
         catch
         {
-            // User can type the code manually
+
         }
     }
 }

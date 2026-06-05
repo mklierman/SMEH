@@ -7,7 +7,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
-/// <summary>Clones the SatisfactoryModLoader (SML) repo and optionally runs Wwise integration; menu option 5.</summary>
+/// <summary>Clones the SatisfactoryModLoader (SML) repo and optionally runs Wwise integration</summary>
 public class StarterProjectService
 {
     private readonly StarterProjectOptions _options;
@@ -64,7 +64,7 @@ public class StarterProjectService
                 return false;
             }
         }
-        var targetPath = Path.Combine(basePath, "SatisfactoryModLoader");
+        var targetPath = Path.Combine(basePath, AppDefaults.StarterProjectDirectoryName);
 
         if (Directory.Exists(targetPath))
         {

@@ -74,7 +74,6 @@ while (true)
 
         if (!completed)
         {
-            // Only show "Invalid option" when the choice was not a menu option (e.g. wrong key). When a valid option failed, the service already showed the reason.
             if (!MenuOptions.ValidChoices.Contains(choice))
                 AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.AccentHex}]Invalid option. Please choose 1-11 or 0 to exit.[/]");
         }
@@ -178,7 +177,7 @@ static async Task<bool> RunAllAsync(SmehOptions options,
     }
     starterBase = starterBase!.Trim();
     options.StarterProject.DefaultClonePath = starterBase;
-    options.WwiseCli.StarterProjectPath = Path.Combine(starterBase, "SatisfactoryModLoader");
+    options.WwiseCli.StarterProjectPath = Path.Combine(starterBase, AppDefaults.StarterProjectDirectoryName);
 
     WwiseCredentialsHelper.Ensure(options.WwiseCli);
 
@@ -228,7 +227,7 @@ static async Task<bool> RunAllAsync(SmehOptions options,
         await cleanupService.RunAsync(skipConfirmation: true);
         AnsiConsole.WriteLine();
 
-        // Offer to delete Unreal Engine installer files (e.g. from Manual install folder).
+        // Offer to delete Unreal Engine installer files
         CssUnrealEngineService.OfferToDeleteEngineInstallerFiles();
         return true;
     }
@@ -248,15 +247,13 @@ static async Task<bool> RunBuildEditorAsync(BuildEditorService buildEditorServic
 
 static async Task OfferNextSetupDocsAsync(OpenDocsService openDocsService)
 {
-    const string projectSetupUrl = "https://docs.ficsit.app/satisfactory-modding/latest/Development/BeginnersGuide/project_setup.html#_open_unreal_editor";
-
     var answer = AnsiConsole.Prompt(new SelectionPrompt<string>()
         .Title("Open the next setup step in the FICSIT docs?")
         .HighlightStyle(SmehTheme.AccentStyle)
         .AddChoices("Yes", "No"));
 
     if (answer == "Yes")
-        await openDocsService.RunAsync(projectSetupUrl, "next setup docs");
+        await openDocsService.RunAsync(AppDefaults.ProjectSetupDocsUrl, "next setup docs");
 }
 
 static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> run, bool useDynamicDisplay = false)

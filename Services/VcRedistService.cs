@@ -26,7 +26,7 @@ public class VcRedistService
 
         var tempDir = Path.Combine(CleanupService.TempRoot, "VcRedist");
         Directory.CreateDirectory(tempDir);
-        var installerPath = Path.Combine(tempDir, "vc_redist.x64.exe");
+        var installerPath = Path.Combine(tempDir, AppDefaults.VcRedistX64FileName);
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Visual C++ Redistributable 2015-2022 (x64)...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "VC++"));
@@ -45,7 +45,6 @@ public class VcRedistService
         if (OperatingSystem.IsWindows() && !alreadyElevated)
             AnsiConsole.MarkupLine($"[dim]You may see a UAC prompt to allow administrator access.[/]");
 
-        // /install /quiet /norestart - silent install. Run elevated on Windows unless already admin.
         var args = "/install /quiet /norestart";
         var result = OperatingSystem.IsWindows() && !alreadyElevated
             ? await _processRunner.RunElevatedAsync(installerPath, args, tempDir, waitForExit: true)
@@ -68,7 +67,6 @@ public class VcRedistService
         return true;
     }
 
-    /// <summary>Returns true if VC++ 2015-2022 runtime (vcruntime140.dll, MSVCP140.dll) appears to be installed.</summary>
     private static bool IsVcRedistInstalled()
     {
         var systemDir = Environment.SystemDirectory;

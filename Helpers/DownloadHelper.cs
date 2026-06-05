@@ -11,7 +11,7 @@ public class DownloadHelper
         await DownloadFileAsync(url, destPath, progress, cancellationToken, null, null);
     }
 
-    /// <summary>Download using an optional HttpClient and optional request headers (such as Authorization and Accept for GitHub API).</summary>
+    /// <summary>Download using an optional HttpClient and optional request headers.</summary>
     public async Task DownloadFileAsync(string url, string destPath, IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, HttpClient? client, IReadOnlyDictionary<string, string>? requestHeaders = null)
     {
         var dir = Path.GetDirectoryName(destPath);

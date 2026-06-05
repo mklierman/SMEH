@@ -3,7 +3,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
-/// <summary>Removes SMEH temp files under TempRoot; menu option 9.</summary>
+/// <summary>Removes SMEH temp files under TempRoot</summary>
 public class CleanupService
 {
     /// <summary>Root temp directory used by the app (VS2022, Clang, CssUnrealEngine, WwiseCLI, GitInstall).</summary>
@@ -15,7 +15,7 @@ public class CleanupService
         if (!Directory.Exists(path))
         {
             AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]No SMEH temp files found. Nothing to clean.[/]");
-            return Task.FromResult(true); // Nothing to do, consider it success
+            return Task.FromResult(true);
         }
 
         if (!skipConfirmation)

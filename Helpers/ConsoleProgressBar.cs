@@ -6,9 +6,9 @@ public static class ConsoleProgressBar
     private const int BarWidth = 30;
     private static readonly object Lock = new();
 
-    /// <summary>Draws one line: a progress bar and percentage/size. Call from IProgress&lt;DownloadProgress&gt; callback.</summary>
+    /// <summary>Draws one line: a progress bar and percentage/size.</summary>
     /// <param name="p">Current download progress.</param>
-    /// <param name="label">Optional prefix (e.g. "Downloading thing...").</param>
+    /// <param name="label">Optional prefix.</param>
     public static void Report(DownloadProgress p, string? label = null)
     {
         lock (Lock)

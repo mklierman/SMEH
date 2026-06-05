@@ -4,7 +4,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
-/// <summary>Downloads and runs the Visual Studio 2022 installer with the configured workload (e.g. SML .vsconfig).</summary>
+/// <summary>Downloads and runs the Visual Studio 2022 installer with the configured workload</summary>
 public class VisualStudioInstallerService
 {
     private readonly VisualStudioOptions _options;
@@ -17,9 +17,6 @@ public class VisualStudioInstallerService
         _downloadHelper = downloadHelper;
         _processRunner = processRunner;
     }
-
-    /// <summary>Official Community Edition bootstrapper (free). Used so we always install Community regardless of config.</summary>
-    private const string CommunityBootstrapperUrl = "https://aka.ms/vs/17/release/vs_community.exe";
 
     public async Task<bool> RunAsync()
     {
@@ -61,7 +58,7 @@ public class VisualStudioInstallerService
         {
             var configFileName = Path.GetFileName(new Uri(_options.ConfigFileUrl).LocalPath);
             if (string.IsNullOrEmpty(configFileName))
-                configFileName = "SML.vsconfig";
+                configFileName = AppDefaults.VisualStudioConfigFileName;
             configPath = Path.Combine(tempDir, configFileName);
             AnsiConsole.MarkupLine($"[dim]Downloading Visual Studio config (SML workload)...[/]");
             var configProgress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Config"));
@@ -75,16 +72,15 @@ public class VisualStudioInstallerService
 
     private async Task<bool> InstallCommunityAsync(string tempDir, string? configPath, bool hasConfig)
     {
-        var bootstrapperPath = Path.Combine(tempDir, "vs_community.exe");
+        var bootstrapperPath = Path.Combine(tempDir, AppDefaults.VisualStudioBootstrapperFileName);
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Visual Studio 2022 Community Edition (free).[/]");
         AnsiConsole.MarkupLine($"[dim]Downloading bootstrapper...[/]");
         var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
-        await _downloadHelper.DownloadFileAsync(CommunityBootstrapperUrl, bootstrapperPath, progress);
+        await _downloadHelper.DownloadFileAsync(AppDefaults.VisualStudioBootstrapperUrl, bootstrapperPath, progress);
         ConsoleProgressBar.Clear();
         AnsiConsole.MarkupLine("[green]Download complete.[/]");
 
-        // Install: --passive (no interactive prompts), --wait (wait for exit), --norestart
         var arguments = "--passive --wait --norestart";
         if (hasConfig)
             arguments = $"--config \"{configPath}\" {arguments}";
@@ -110,9 +106,9 @@ public class VisualStudioInstallerService
         if (!File.Exists(installerPath))
         {
             AnsiConsole.MarkupLine("[yellow]Visual Studio Installer was not found. Downloading the VS 2022 Community bootstrapper to apply the config.[/]");
-            installerPath = Path.Combine(tempDir, "vs_community.exe");
+            installerPath = Path.Combine(tempDir, AppDefaults.VisualStudioBootstrapperFileName);
             var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
-            await _downloadHelper.DownloadFileAsync(CommunityBootstrapperUrl, installerPath, progress);
+            await _downloadHelper.DownloadFileAsync(AppDefaults.VisualStudioBootstrapperUrl, installerPath, progress);
             ConsoleProgressBar.Clear();
             AnsiConsole.MarkupLine("[green]Download complete.[/]");
         }
@@ -139,6 +135,6 @@ public class VisualStudioInstallerService
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
             "Microsoft Visual Studio",
             "Installer",
-            "setup.exe");
+            AppDefaults.VisualStudioInstallerFileName);
     }
 }

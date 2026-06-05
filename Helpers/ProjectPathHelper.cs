@@ -56,7 +56,7 @@ public static class ProjectPathHelper
             return false;
         }
         path = path!.Trim();
-        if (File.Exists(path) && path.EndsWith("FactoryGame.uproject", StringComparison.OrdinalIgnoreCase))
+        if (File.Exists(path) && path.EndsWith(AppDefaults.StarterProjectFileName, StringComparison.OrdinalIgnoreCase))
         {
             projectDir = Path.GetDirectoryName(path);
             uprojectPath = path;
@@ -64,7 +64,7 @@ public static class ProjectPathHelper
         }
         if (Directory.Exists(path))
         {
-            uprojectPath = Path.Combine(path, "FactoryGame.uproject");
+            uprojectPath = Path.Combine(path, AppDefaults.StarterProjectFileName);
             if (File.Exists(uprojectPath))
             {
                 projectDir = path;

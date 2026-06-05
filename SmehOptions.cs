@@ -1,6 +1,5 @@
 namespace SMEH;
 
-/// <summary>Root configuration object; each property holds options for a specific area (Visual Studio, Clang, CSS UE, Wwise, Starter Project).</summary>
 public class SmehOptions
 {
     public const string SectionName = "Smeh";
@@ -14,35 +13,32 @@ public class SmehOptions
 
 public class VisualStudioOptions
 {
-    /// <summary>Ignored: the app always installs Visual Studio 2022 Community Edition. Kept for config compatibility.</summary>
-    public string BootstrapperUrl { get; set; } = "https://aka.ms/vs/17/release/vs_community.exe";
-    /// <summary>Optional local path to a .vsconfig file. If set and the file exists, this is used instead of ConfigFileUrl.</summary>
+    public string BootstrapperUrl { get; set; } = AppDefaults.VisualStudioBootstrapperUrl;
     public string ConfigFilePath { get; set; } = "";
-    /// <summary>URL to download a .vsconfig file (e.g. SML workload config). Used when ConfigFilePath is not set.</summary>
-    public string ConfigFileUrl { get; set; } = "https://docs.ficsit.app/satisfactory-modding/latest/_attachments/BeginnersGuide/dependencies/SML.vsconfig";
+    public string ConfigFileUrl { get; set; } = AppDefaults.VisualStudioConfigFileUrl;
 }
 
 public class ClangOptions
 {
-    public string InstallerUrl { get; set; } = "https://cdn.unrealengine.com/CrossToolchain_Linux/v25_clang-18.1.0-rockylinux8.exe";
+    public string InstallerUrl { get; set; } = AppDefaults.ClangInstallerUrl;
 }
 
 public class CssUnrealEngineOptions
 {
-    /// <summary>GitHub repo for custom Unreal Engine (e.g. satisfactorymodding/UnrealEngine). Latest release is used.</summary>
-    public string Repository { get; set; } = "satisfactorymodding/UnrealEngine";
-    /// <summary>Path where CSS Unreal Engine is or will be installed. Default is the installer default. Set this if you chose a different path during install.</summary>
-    public string InstallPath { get; set; } = @"C:\Program Files\Unreal Engine - CSS";
+    public string Repository { get; set; } = AppDefaults.CssUnrealEngineRepository;
+    public string InstallPath { get; set; } = AppDefaults.CssUnrealEngineInstallPath;
+    public string EffectiveInstallPath => SetupOptionDefaults.ValueOrDefault(InstallPath, AppDefaults.CssUnrealEngineInstallPath);
 }
 
 public class WwiseCliOptions
 {
     public bool UseLatest { get; set; } = true;
-    public string ReleaseTag { get; set; } = "v0.2.2";
-    public string Repository { get; set; } = "mircearoata/wwise-cli";
-    public string SdkVersion { get; set; } = "2023.1.14.8770";
-    public string IntegrationVersion { get; set; } = "2023.1.14.3555";
-    /// <summary>Path to SatisfactoryModLoader clone (containing FactoryGame.uproject). If empty, uses the current run's option 5 clone or prompts.</summary>
+    public string ReleaseTag { get; set; } = AppDefaults.WwiseCliReleaseTag;
+    public string Repository { get; set; } = AppDefaults.WwiseCliRepository;
+    public string SdkVersion { get; set; } = AppDefaults.WwiseCliSdkVersion;
+    public string IntegrationVersion { get; set; } = AppDefaults.WwiseCliIntegrationVersion;
+    public string EffectiveSdkVersion => SetupOptionDefaults.ValueOrDefault(SdkVersion, AppDefaults.WwiseCliSdkVersion);
+    public string EffectiveIntegrationVersion => SetupOptionDefaults.ValueOrDefault(IntegrationVersion, AppDefaults.WwiseCliIntegrationVersion);
     public string StarterProjectPath { get; set; } = "";
     public string Email { get; set; } = "";
     public string Password { get; set; } = "";
@@ -50,7 +46,16 @@ public class WwiseCliOptions
 
 public class StarterProjectOptions
 {
-    public string RepositoryUrl { get; set; } = "https://github.com/satisfactorymodding/SatisfactoryModLoader.git";
-    public string Branch { get; set; } = "master";
+    public string RepositoryUrl { get; set; } = AppDefaults.StarterProjectRepositoryUrl;
+    public string Branch { get; set; } = AppDefaults.StarterProjectBranch;
     public string DefaultClonePath { get; set; } = "";
+}
+
+internal static class SetupOptionDefaults
+{
+    public static string ValueOrDefault(string? value, string defaultValue)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? defaultValue : trimmed;
+    }
 }

@@ -21,7 +21,7 @@ public class OpenEditorService
         if (string.IsNullOrEmpty(projectDir))
             return Task.FromResult(false);
 
-        var uprojectPath = Path.Combine(projectDir, "FactoryGame.uproject");
+        var uprojectPath = Path.Combine(projectDir, AppDefaults.StarterProjectFileName);
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");

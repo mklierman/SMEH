@@ -39,7 +39,7 @@ public static class SmehState
         }
         catch
         {
-            // Best effort cleanup only. SMEH should still run if local app data is locked or unavailable.
+
         }
     }
 
@@ -54,8 +54,7 @@ public static class SmehState
         return string.IsNullOrEmpty(path) ? null : path;
     }
 
-    /// <summary>Returns true if the given step is detected as installed (not from stored state).</summary>
-    /// <param name="cssUnrealEnginePath">Optional. If set, step 3 is checked at this path (e.g. from CssUnrealEngine:InstallPath).</param>
+    /// <summary>Returns true if the given step is detected as installed.</summary>
     public static bool IsStepCompleted(int step, string? starterProjectPathForWwise = null, string? cssUnrealEnginePath = null)
     {
         try
@@ -110,20 +109,17 @@ public static class SmehState
 
     private static bool IsVisualStudio2022Installed() => TryGetVisualStudio2022InstallPath(out _);
 
-    private const string DefaultClangToolchainsPath = @"C:\UnrealToolchains";
-    private const string DefaultClangToolchainSubdir = "v25_clang-18.1.0-rockylinux8";
-
     private static bool IsClangToolchainInstalled()
     {
         var root = Environment.GetEnvironmentVariable("LINUX_MULTIARCH_ROOT");
         if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root) && HasValidClangToolchainAt(root))
             return true;
-        var defaultPath = Path.Combine(DefaultClangToolchainsPath, DefaultClangToolchainSubdir);
+        var defaultPath = Path.Combine(AppDefaults.ClangToolchainsPath, AppDefaults.ClangToolchainSubdir);
         if (Directory.Exists(defaultPath) && HasValidClangToolchainAt(defaultPath))
             return true;
-        if (!Directory.Exists(DefaultClangToolchainsPath))
+        if (!Directory.Exists(AppDefaults.ClangToolchainsPath))
             return false;
-        foreach (var subDir in Directory.EnumerateDirectories(DefaultClangToolchainsPath))
+        foreach (var subDir in Directory.EnumerateDirectories(AppDefaults.ClangToolchainsPath))
         {
             if (Path.GetFileName(subDir).StartsWith("v25_clang-", StringComparison.OrdinalIgnoreCase) && HasValidClangToolchainAt(subDir))
                 return true;
@@ -140,7 +136,6 @@ public static class SmehState
         return File.Exists(clang);
     }
 
-    private const string DefaultCssUnrealEnginePath = @"C:\Program Files\Unreal Engine - CSS";
     private const string UnrealBuildsRegPath = @"Software\Epic Games\Unreal Engine\Builds";
 
     private static bool IsCssUnrealEngineInstalled(string? configPath = null)
@@ -152,7 +147,7 @@ public static class SmehState
             if (HasValidEngineAtPath(path))
                 return true;
         }
-        if (HasValidEngineAtPath(DefaultCssUnrealEnginePath))
+        if (HasValidEngineAtPath(AppDefaults.CssUnrealEngineInstallPath))
             return true;
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
@@ -191,7 +186,7 @@ public static class SmehState
             {
                 if (!subKeyName.EndsWith("CSS", StringComparison.OrdinalIgnoreCase))
                     continue;
-                var versionPart = subKeyName[..^3].TrimEnd('-', ' '); // e.g. "5.3.2-CSS" -> "5.3.2"
+                var versionPart = subKeyName[..^3].TrimEnd('-', ' ');
                 if (!Version.TryParse(versionPart, out var version))
                     continue;
                 using var subKey = key.OpenSubKey(subKeyName);
@@ -203,7 +198,7 @@ public static class SmehState
             }
             if (cssBuilds.Count == 0)
                 return [];
-            cssBuilds.Sort((a, b) => b.Version.CompareTo(a.Version)); // highest first
+            cssBuilds.Sort((a, b) => b.Version.CompareTo(a.Version));
             return new[] { cssBuilds[0].Path };
         }
         catch
@@ -217,7 +212,7 @@ public static class SmehState
         var path = GetLastClonePath();
         if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
             return false;
-        return File.Exists(Path.Combine(path, "FactoryGame.uproject"));
+        return File.Exists(Path.Combine(path, AppDefaults.StarterProjectFileName));
     }
 
     private static bool IsWwiseIntegrated(string? projectDir)
@@ -229,8 +224,6 @@ public static class SmehState
     }
 
     /// <summary>Returns the first required step that is not detected as installed, or null if all are done.</summary>
-    /// <param name="starterProjectPathForWwise">Optional path to starter project when checking step 5 (e.g. from WwiseCli:StarterProjectPath).</param>
-    /// <param name="cssUnrealEnginePath">Optional path to CSS Unreal Engine when checking step 3 (e.g. from CssUnrealEngine:InstallPath).</param>
     public static int? GetFirstMissingStep(IReadOnlyList<int> requiredSteps, string? starterProjectPathForWwise = null, string? cssUnrealEnginePath = null)
     {
         foreach (var step in requiredSteps)
@@ -250,8 +243,6 @@ public static class SmehState
     };
 
     /// <summary>Returns true if all required steps are detected as installed; otherwise prints a message and returns false.</summary>
-    /// <param name="starterProjectPathForWwise">Optional path to starter project when checking step 5.</param>
-    /// <param name="cssUnrealEnginePath">Optional path to CSS Unreal Engine when checking step 3 (e.g. from CssUnrealEngine:InstallPath).</param>
     public static bool EnsureStepsCompleted(IReadOnlyList<int> requiredSteps, string? starterProjectPathForWwise = null, string? cssUnrealEnginePath = null)
     {
         var missing = GetFirstMissingStep(requiredSteps, starterProjectPathForWwise, cssUnrealEnginePath);
