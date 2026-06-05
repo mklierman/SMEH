@@ -300,7 +300,7 @@ static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> ru
 
 static string FormatDuration(TimeSpan elapsed)
 {
-    if (elapsed.TotalHours >= 1)
+	if (elapsed.TotalHours >= 1)
     {
         return $"{(int)elapsed.TotalHours}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
     }
