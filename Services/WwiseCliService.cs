@@ -30,7 +30,9 @@ public class WwiseCliService
     public async Task<bool> RunAsync()
     {
         if (!WwiseCredentialsHelper.Ensure(_options))
+        {
             return false;
+        }
 
         var repo = _options.Repository.Trim();
         if (string.IsNullOrEmpty(repo))
@@ -101,23 +103,32 @@ public class WwiseCliService
         }
 
         if (string.IsNullOrEmpty(workingDir))
+        {
             workingDir = Path.GetDirectoryName(exePath);
+        }
 
         // Resolve starter project path
         var projectDir = ProjectPathHelper.ResolveStarterProjectPath(_options);
         if (string.IsNullOrEmpty(projectDir))
+        {
             return false;
+        }
 
         var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine, SmehState.StepStarterProject }, projectDir, string.IsNullOrEmpty(cssPath) ? null : cssPath))
+        {
             return false;
+        }
 
         var uprojectPath = Path.Combine(projectDir, AppDefaults.StarterProjectFileName);
         if (!File.Exists(uprojectPath))
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
             if (!ProjectPathHelper.TryPromptProjectPath(out var promptedDir, out var promptedUproject))
+            {
                 return false;
+            }
+
             projectDir = promptedDir!;
             uprojectPath = promptedUproject!;
             SmehState.SetLastClonePath(projectDir);
@@ -131,20 +142,35 @@ public class WwiseCliService
         var downloadResult = await _processRunner.RunWithConsoleOutputAsync(exePath, downloadArgs, workingDir, waitForExit: true, sendInputWhenLine: line =>
         {
             if (line == null)
+            {
                 return null;
+            }
+
             if (line.Contains("Enter Wwise email:", StringComparison.OrdinalIgnoreCase))
+            {
                 return _options.Email;
+            }
+
             if (line.Contains("Enter Wwise password:", StringComparison.OrdinalIgnoreCase))
+            {
                 return _options.Password;
+            }
+
             return null;
         });
         if (downloadResult.ExitCode != 0)
         {
             AnsiConsole.MarkupLineInterpolated($"[red]Download step failed (exit code {downloadResult.ExitCode}).[/]");
             if (!string.IsNullOrEmpty(downloadResult.StdError))
+            {
                 AnsiConsole.WriteLine(downloadResult.StdError);
+            }
+
             if (!string.IsNullOrEmpty(downloadResult.StdOut))
+            {
                 AnsiConsole.WriteLine(downloadResult.StdOut);
+            }
+
             return false;
         }
         AnsiConsole.MarkupLine("[green]SDK download completed.[/]");
@@ -158,9 +184,15 @@ public class WwiseCliService
         {
             AnsiConsole.MarkupLineInterpolated($"[red]Integrate step failed (exit code {integrateResult.ExitCode}).[/]");
             if (!string.IsNullOrEmpty(integrateResult.StdError))
+            {
                 AnsiConsole.WriteLine(integrateResult.StdError);
+            }
+
             if (!string.IsNullOrEmpty(integrateResult.StdOut))
+            {
                 AnsiConsole.WriteLine(integrateResult.StdOut);
+            }
+
             return false;
         }
         AnsiConsole.MarkupLine("[green]Wwise integration completed successfully.[/]");

@@ -21,7 +21,9 @@ public class ClangInstallerService
     public async Task<bool> RunAsync()
     {
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio }))
+        {
             return false;
+        }
 
         var installerUrlOrPath = _options.InstallerUrl?.Trim();
         if (string.IsNullOrWhiteSpace(installerUrlOrPath))
@@ -61,7 +63,9 @@ public class ClangInstallerService
 
         var result = await _processRunner.RunAsync(installerPath, "/S", null, waitForExit: true);
         if (result.ExitCode != 0 && !string.IsNullOrEmpty(result.StdError))
+        {
             AnsiConsole.WriteLine("Stderr: " + result.StdError);
+        }
 
         if (result.ExitCode == 0)
         {
@@ -72,7 +76,9 @@ public class ClangInstallerService
                 try
                 {
                     if (File.Exists(installerPath))
+                    {
                         File.Delete(installerPath);
+                    }
                 }
                 catch
                 {
@@ -81,7 +87,10 @@ public class ClangInstallerService
             }
         }
         else
+        {
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
+        }
+
         return result.ExitCode == 0;
     }
 }

@@ -43,7 +43,9 @@ public class VcRedistService
         AnsiConsole.MarkupLine("[green]Download complete. Running installer (quiet mode)...[/]");
         var alreadyElevated = ProcessRunner.IsRunningElevated();
         if (OperatingSystem.IsWindows() && !alreadyElevated)
+        {
             AnsiConsole.MarkupLine($"[dim]You may see a UAC prompt to allow administrator access.[/]");
+        }
 
         var args = "/install /quiet /norestart";
         var result = OperatingSystem.IsWindows() && !alreadyElevated
@@ -58,7 +60,9 @@ public class VcRedistService
         try
         {
             if (File.Exists(installerPath))
+            {
                 File.Delete(installerPath);
+            }
         }
         catch
         {

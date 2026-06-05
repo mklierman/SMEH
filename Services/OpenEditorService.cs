@@ -19,7 +19,9 @@ public class OpenEditorService
     {
         var projectDir = ProjectPathHelper.ResolveStarterProjectPath(_wwiseCliOptions);
         if (string.IsNullOrEmpty(projectDir))
+        {
             return Task.FromResult(false);
+        }
 
         var uprojectPath = Path.Combine(projectDir, AppDefaults.StarterProjectFileName);
         if (!File.Exists(uprojectPath))

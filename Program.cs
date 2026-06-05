@@ -40,7 +40,9 @@ while (true)
 
     var choice = ShowMenu(options);
     if (choice == null)
+    {
         continue;
+    }
 
     if (choice == "0")
     {
@@ -49,7 +51,10 @@ while (true)
             .HighlightStyle(SmehTheme.AccentStyle)
             .AddChoices("Yes", "No"));
         if (confirm != "Yes")
+        {
             continue;
+        }
+
         AnsiConsole.Write(new Panel("[green]✓ Goodbye.[/]").Border(BoxBorder.Rounded).BorderColor(SmehTheme.Accent).Padding(0, 0));
         return 0;
     }
@@ -75,7 +80,9 @@ while (true)
         if (!completed)
         {
             if (!MenuOptions.ValidChoices.Contains(choice))
+            {
                 AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.AccentHex}]Invalid option. Please choose 1-11 or 0 to exit.[/]");
+            }
         }
         else
         {
@@ -152,7 +159,9 @@ static async Task<bool> RunAllAsync(SmehOptions options,
         .HighlightStyle(SmehTheme.AccentStyle)
         .AddChoices("Use default", "Custom path"));
     if (engineChoice == "Use default")
+    {
         options.CssUnrealEngine.InstallPath = defaultEnginePath;
+    }
     else
     {
         var customEngine = AnsiConsole.Prompt(new TextPrompt<string>("Enter custom Unreal Engine install path (or press Enter to cancel):").AllowEmpty());
@@ -241,7 +250,10 @@ static async Task<bool> RunBuildEditorAsync(BuildEditorService buildEditorServic
 {
     var completed = await RunOptionAsync("Building Editor", () => buildEditorService.RunAsync(), useDynamicDisplay: true);
     if (completed)
+    {
         await OfferNextSetupDocsAsync(openDocsService);
+    }
+
     return completed;
 }
 
@@ -253,7 +265,9 @@ static async Task OfferNextSetupDocsAsync(OpenDocsService openDocsService)
         .AddChoices("Yes", "No"));
 
     if (answer == "Yes")
+    {
         await openDocsService.RunAsync(AppDefaults.ProjectSetupDocsUrl, "next setup docs");
+    }
 }
 
 static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> run, bool useDynamicDisplay = false)
@@ -261,7 +275,9 @@ static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> ru
     var sw = Stopwatch.StartNew();
     bool completed;
     if (useDynamicDisplay)
+    {
         completed = await run();
+    }
     else
     {
         var useSpinner = statusMessage.EndsWith("...", StringComparison.Ordinal);
@@ -273,7 +289,9 @@ static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> ru
                 .StartAsync(statusMessage, async _ => completed = await run());
         }
         else
+        {
             completed = await run();
+        }
     }
     sw.Stop();
     AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.FicsitOrange}]Step took {FormatDuration(sw.Elapsed)}.[/]");
@@ -283,7 +301,10 @@ static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> ru
 static string FormatDuration(TimeSpan elapsed)
 {
     if (elapsed.TotalHours >= 1)
+    {
         return $"{(int)elapsed.TotalHours}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+    }
+
     return $"{elapsed.Minutes}:{elapsed.Seconds:D2}";
 }
 

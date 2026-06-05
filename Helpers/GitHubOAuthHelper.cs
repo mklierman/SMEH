@@ -119,7 +119,10 @@ public static class GitHubOAuthHelper
         interval = 5;
         expiresIn = 900;
 
-        if (string.IsNullOrWhiteSpace(body)) return false;
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return false;
+        }
 
         // Try JSON first
         if (body.TrimStart().StartsWith("{"))
@@ -130,9 +133,21 @@ public static class GitHubOAuthHelper
                 var root = doc.RootElement;
                 deviceCode = root.TryGetProperty("device_code", out var dc) ? dc.GetString() : null;
                 userCode = root.TryGetProperty("user_code", out var uc) ? uc.GetString() : null;
-                if (root.TryGetProperty("verification_uri", out var v)) verificationUri = v.GetString();
-                if (root.TryGetProperty("interval", out var i)) interval = i.GetInt32();
-                if (root.TryGetProperty("expires_in", out var e)) expiresIn = e.GetInt32();
+                if (root.TryGetProperty("verification_uri", out var v))
+                {
+                    verificationUri = v.GetString();
+                }
+
+                if (root.TryGetProperty("interval", out var i))
+                {
+                    interval = i.GetInt32();
+                }
+
+                if (root.TryGetProperty("expires_in", out var e))
+                {
+                    expiresIn = e.GetInt32();
+                }
+
                 return !string.IsNullOrEmpty(deviceCode) && !string.IsNullOrEmpty(userCode);
             }
             catch
@@ -142,11 +157,31 @@ public static class GitHubOAuthHelper
         }
 
         var parsed = ParseFormUrlEncoded(body);
-        if (parsed.TryGetValue("device_code", out var dcVal)) deviceCode = dcVal;
-        if (parsed.TryGetValue("user_code", out var ucVal)) userCode = ucVal;
-        if (parsed.TryGetValue("verification_uri", out var vVal)) verificationUri = vVal;
-        if (parsed.TryGetValue("interval", out var iVal) && int.TryParse(iVal, out var iv)) interval = iv;
-        if (parsed.TryGetValue("expires_in", out var eVal) && int.TryParse(eVal, out var ev)) expiresIn = ev;
+        if (parsed.TryGetValue("device_code", out var dcVal))
+        {
+            deviceCode = dcVal;
+        }
+
+        if (parsed.TryGetValue("user_code", out var ucVal))
+        {
+            userCode = ucVal;
+        }
+
+        if (parsed.TryGetValue("verification_uri", out var vVal))
+        {
+            verificationUri = vVal;
+        }
+
+        if (parsed.TryGetValue("interval", out var iVal) && int.TryParse(iVal, out var iv))
+        {
+            interval = iv;
+        }
+
+        if (parsed.TryGetValue("expires_in", out var eVal) && int.TryParse(eVal, out var ev))
+        {
+            expiresIn = ev;
+        }
+
         return !string.IsNullOrEmpty(deviceCode) && !string.IsNullOrEmpty(userCode);
     }
 
@@ -154,7 +189,10 @@ public static class GitHubOAuthHelper
     {
         accessToken = null;
         error = null;
-        if (string.IsNullOrWhiteSpace(body)) return true;
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return true;
+        }
 
         if (body.TrimStart().StartsWith("{"))
         {
@@ -162,8 +200,16 @@ public static class GitHubOAuthHelper
             {
                 using var doc = JsonDocument.Parse(body);
                 var root = doc.RootElement;
-                if (root.TryGetProperty("access_token", out var at)) accessToken = at.GetString();
-                if (root.TryGetProperty("error", out var err)) error = err.GetString();
+                if (root.TryGetProperty("access_token", out var at))
+                {
+                    accessToken = at.GetString();
+                }
+
+                if (root.TryGetProperty("error", out var err))
+                {
+                    error = err.GetString();
+                }
+
                 return true;
             }
             catch
@@ -184,7 +230,11 @@ public static class GitHubOAuthHelper
         foreach (var pair in body.Split('&'))
         {
             var idx = pair.IndexOf('=');
-            if (idx < 0) continue;
+            if (idx < 0)
+            {
+                continue;
+            }
+
             var key = Uri.UnescapeDataString(pair[..idx].Trim());
             var value = Uri.UnescapeDataString(pair[(idx + 1)..].Trim());
             result[key] = value;
@@ -194,8 +244,16 @@ public static class GitHubOAuthHelper
 
     private static void TryCopyToClipboard(string text)
     {
-        if (string.IsNullOrEmpty(text)) return;
-        if (!OperatingSystem.IsWindows()) return;
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         text = text.Trim();
         try
         {

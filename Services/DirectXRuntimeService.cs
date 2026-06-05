@@ -43,7 +43,10 @@ public class DirectXRuntimeService
         AnsiConsole.MarkupLine("[green]Download complete. Running installer (quiet mode)...[/]");
         var alreadyElevated = ProcessRunner.IsRunningElevated();
         if (OperatingSystem.IsWindows() && !alreadyElevated)
+        {
             AnsiConsole.MarkupLine($"[dim]You may see a UAC prompt to allow administrator access. This is required for DirectX install.[/]");
+        }
+
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]This may take a few minutes. The installer may show a progress window.[/]");
 
         var result = OperatingSystem.IsWindows() && !alreadyElevated
@@ -58,7 +61,9 @@ public class DirectXRuntimeService
         try
         {
             if (File.Exists(installerPath))
+            {
                 File.Delete(installerPath);
+            }
         }
         catch
         {

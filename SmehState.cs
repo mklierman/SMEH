@@ -32,10 +32,14 @@ public static class SmehState
         try
         {
             if (File.Exists(LegacyLastClonePathFile))
+            {
                 File.Delete(LegacyLastClonePathFile);
+            }
 
             if (Directory.Exists(LegacyStateDir) && !Directory.EnumerateFileSystemEntries(LegacyStateDir).Any())
+            {
                 Directory.Delete(LegacyStateDir);
+            }
         }
         catch
         {
@@ -82,7 +86,10 @@ public static class SmehState
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
             "Microsoft Visual Studio", "Installer", "vswhere.exe");
         if (!File.Exists(vswhere))
+        {
             return false;
+        }
+
         try
         {
             using var process = Process.Start(new ProcessStartInfo
@@ -93,11 +100,23 @@ public static class SmehState
                 RedirectStandardOutput = true,
                 CreateNoWindow = true
             });
-            if (process == null) return false;
+            if (process == null)
+            {
+                return false;
+            }
+
             var path = process.StandardOutput.ReadToEnd().Trim();
             process.WaitForExit(5000);
-            if (process.ExitCode != 0 || string.IsNullOrEmpty(path)) return false;
-            if (!Directory.Exists(path)) return false;
+            if (process.ExitCode != 0 || string.IsNullOrEmpty(path))
+            {
+                return false;
+            }
+
+            if (!Directory.Exists(path))
+            {
+                return false;
+            }
+
             installationPath = path;
             return true;
         }
@@ -113,16 +132,27 @@ public static class SmehState
     {
         var root = Environment.GetEnvironmentVariable("LINUX_MULTIARCH_ROOT");
         if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root) && HasValidClangToolchainAt(root))
+        {
             return true;
+        }
+
         var defaultPath = Path.Combine(AppDefaults.ClangToolchainsPath, AppDefaults.ClangToolchainSubdir);
         if (Directory.Exists(defaultPath) && HasValidClangToolchainAt(defaultPath))
+        {
             return true;
+        }
+
         if (!Directory.Exists(AppDefaults.ClangToolchainsPath))
+        {
             return false;
+        }
+
         foreach (var subDir in Directory.EnumerateDirectories(AppDefaults.ClangToolchainsPath))
         {
             if (Path.GetFileName(subDir).StartsWith("v25_clang-", StringComparison.OrdinalIgnoreCase) && HasValidClangToolchainAt(subDir))
+            {
                 return true;
+            }
         }
         return false;
     }
@@ -131,7 +161,10 @@ public static class SmehState
     {
         var multiArch = Path.Combine(root, "x86_64-unknown-linux-gnu");
         if (Directory.Exists(multiArch))
+        {
             return true;
+        }
+
         var clang = Path.Combine(root, "bin", "clang++.exe");
         return File.Exists(clang);
     }
@@ -141,24 +174,38 @@ public static class SmehState
     private static bool IsCssUnrealEngineInstalled(string? configPath = null)
     {
         if (HasValidEngineAtPath(configPath?.Trim()))
+        {
             return true;
+        }
+
         foreach (var path in GetUnrealEnginePathsFromRegistry())
         {
             if (HasValidEngineAtPath(path))
+            {
                 return true;
+            }
         }
         if (HasValidEngineAtPath(AppDefaults.CssUnrealEngineInstallPath))
+        {
             return true;
+        }
+
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         foreach (var baseDir in new[] { programFiles, programFilesX86 })
         {
             var epicDir = Path.Combine(baseDir, "Epic Games");
-            if (!Directory.Exists(epicDir)) continue;
+            if (!Directory.Exists(epicDir))
+            {
+                continue;
+            }
+
             foreach (var dir in Directory.EnumerateDirectories(epicDir))
             {
                 if (HasValidEngineAtPath(dir))
+                {
                     return true;
+                }
             }
         }
         return false;
@@ -167,7 +214,10 @@ public static class SmehState
     private static bool HasValidEngineAtPath(string? dir)
     {
         if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+        {
             return false;
+        }
+
         var buildBat = Path.Combine(dir, "Engine", "Build", "BatchFiles", "Build.bat");
         return File.Exists(buildBat);
     }
@@ -175,29 +225,51 @@ public static class SmehState
     private static IEnumerable<string> GetUnrealEnginePathsFromRegistry()
     {
         if (!OperatingSystem.IsWindows())
+        {
             return [];
+        }
+
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(UnrealBuildsRegPath);
             if (key == null)
+            {
                 return [];
+            }
+
             var cssBuilds = new List<(Version Version, string Path)>();
             foreach (var subKeyName in key.GetSubKeyNames())
             {
                 if (!subKeyName.EndsWith("CSS", StringComparison.OrdinalIgnoreCase))
+                {
                     continue;
+                }
+
                 var versionPart = subKeyName[..^3].TrimEnd('-', ' ');
                 if (!Version.TryParse(versionPart, out var version))
+                {
                     continue;
+                }
+
                 using var subKey = key.OpenSubKey(subKeyName);
-                if (subKey == null) continue;
+                if (subKey == null)
+                {
+                    continue;
+                }
+
                 var path = subKey.GetValue(null) as string ?? subKey.GetValue("") as string;
                 if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path.Trim()))
+                {
                     continue;
+                }
+
                 cssBuilds.Add((version, path.Trim()));
             }
             if (cssBuilds.Count == 0)
+            {
                 return [];
+            }
+
             cssBuilds.Sort((a, b) => b.Version.CompareTo(a.Version));
             return new[] { cssBuilds[0].Path };
         }
@@ -211,14 +283,20 @@ public static class SmehState
     {
         var path = GetLastClonePath();
         if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+        {
             return false;
+        }
+
         return File.Exists(Path.Combine(path, AppDefaults.StarterProjectFileName));
     }
 
     private static bool IsWwiseIntegrated(string? projectDir)
     {
         if (string.IsNullOrEmpty(projectDir) || !Directory.Exists(projectDir))
+        {
             return false;
+        }
+
         var wwisePlugin = Path.Combine(projectDir, "Plugins", "Wwise");
         return Directory.Exists(wwisePlugin);
     }
@@ -227,8 +305,13 @@ public static class SmehState
     public static int? GetFirstMissingStep(IReadOnlyList<int> requiredSteps, string? starterProjectPathForWwise = null, string? cssUnrealEnginePath = null)
     {
         foreach (var step in requiredSteps)
+        {
             if (!IsStepCompleted(step, starterProjectPathForWwise, cssUnrealEnginePath))
+            {
                 return step;
+            }
+        }
+
         return null;
     }
 
@@ -246,7 +329,11 @@ public static class SmehState
     public static bool EnsureStepsCompleted(IReadOnlyList<int> requiredSteps, string? starterProjectPathForWwise = null, string? cssUnrealEnginePath = null)
     {
         var missing = GetFirstMissingStep(requiredSteps, starterProjectPathForWwise, cssUnrealEnginePath);
-        if (missing == null) return true;
+        if (missing == null)
+        {
+            return true;
+        }
+
         AnsiConsole.MarkupLineInterpolated($"[yellow]Please complete the previous step first: {GetStepName(missing.Value)}[/]");
         return false;
     }

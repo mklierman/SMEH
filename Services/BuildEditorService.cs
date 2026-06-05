@@ -23,7 +23,9 @@ public class BuildEditorService
     {
         var projectDir = ProjectPathHelper.ResolveStarterProjectPath(_wwiseCliOptions);
         if (string.IsNullOrEmpty(projectDir))
+        {
             return false;
+        }
 
         var cssPath = _cssUnrealEngineOptions.EffectiveInstallPath;
         var hasKnownStarterProjectPath =
@@ -45,7 +47,10 @@ public class BuildEditorService
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
             if (!ProjectPathHelper.TryPromptProjectPath(out projectDir, out uprojectPath))
+            {
                 return false;
+            }
+
             SmehState.SetLastClonePath(projectDir!);
         }
 
@@ -55,7 +60,10 @@ public class BuildEditorService
         {
             AnsiConsole.MarkupLineInterpolated($"[red]Build.bat not found at: {Markup.Escape(buildBat)}[/]");
             if (!ProjectPathHelper.TryPromptEnginePath(ref cssPath))
+            {
                 return false;
+            }
+
             batchDir = Path.Combine(cssPath, "Engine", "Build", "BatchFiles");
             buildBat = Path.Combine(batchDir, "Build.bat");
             if (!File.Exists(buildBat))
@@ -74,9 +82,15 @@ public class BuildEditorService
         {
             AnsiConsole.MarkupLineInterpolated($"[red]Build failed (exit code {result.ExitCode}).[/]");
             if (!string.IsNullOrEmpty(result.StdError))
+            {
                 AnsiConsole.WriteLine(result.StdError);
+            }
+
             if (!string.IsNullOrEmpty(result.StdOut))
+            {
                 AnsiConsole.WriteLine(result.StdOut);
+            }
+
             return false;
         }
         AnsiConsole.MarkupLine("[green]Build completed successfully.[/]");
@@ -88,10 +102,16 @@ public class BuildEditorService
     {
         var buildingMatch = Regex.Match(line, @"Building\s+(\d+)\s+action");
         if (buildingMatch.Success)
+        {
             return (0, int.Parse(buildingMatch.Groups[1].Value));
+        }
+
         var stepMatch = Regex.Match(line, @"\[(\d+)/(\d+)\]");
         if (stepMatch.Success)
+        {
             return (int.Parse(stepMatch.Groups[1].Value), int.Parse(stepMatch.Groups[2].Value));
+        }
+
         return null;
     }
 }

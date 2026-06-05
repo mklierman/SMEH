@@ -58,7 +58,10 @@ public class VisualStudioInstallerService
         {
             var configFileName = Path.GetFileName(new Uri(_options.ConfigFileUrl).LocalPath);
             if (string.IsNullOrEmpty(configFileName))
+            {
                 configFileName = AppDefaults.VisualStudioConfigFileName;
+            }
+
             configPath = Path.Combine(tempDir, configFileName);
             AnsiConsole.MarkupLine($"[dim]Downloading Visual Studio config (SML workload)...[/]");
             var configProgress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Config"));
@@ -83,7 +86,9 @@ public class VisualStudioInstallerService
 
         var arguments = "--passive --wait --norestart";
         if (hasConfig)
+        {
             arguments = $"--config \"{configPath}\" {arguments}";
+        }
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Running Visual Studio installer (this may take a long time)...[/]");
         var result = await _processRunner.RunAsync(bootstrapperPath, arguments, tempDir, waitForExit: true);
@@ -92,7 +97,10 @@ public class VisualStudioInstallerService
         {
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
             if (!string.IsNullOrEmpty(result.StdError))
+            {
                 AnsiConsole.WriteLine("Stderr: " + result.StdError);
+            }
+
             return false;
         }
 
@@ -121,7 +129,10 @@ public class VisualStudioInstallerService
         {
             AnsiConsole.MarkupLineInterpolated($"[yellow]Visual Studio config apply exited with code {result.ExitCode}.[/]");
             if (!string.IsNullOrEmpty(result.StdError))
+            {
                 AnsiConsole.WriteLine("Stderr: " + result.StdError);
+            }
+
             return false;
         }
 

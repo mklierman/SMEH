@@ -16,14 +16,18 @@ public class DownloadHelper
     {
         var dir = Path.GetDirectoryName(destPath);
         if (!string.IsNullOrEmpty(dir))
+        {
             Directory.CreateDirectory(dir);
+        }
 
         var httpClient = client ?? DefaultClient;
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         if (requestHeaders != null)
         {
             foreach (var (key, value) in requestHeaders)
+            {
                 request.Headers.TryAddWithoutValidation(key, value);
+            }
         }
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();

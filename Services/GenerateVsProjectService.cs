@@ -22,7 +22,9 @@ public class GenerateVsProjectService
     {
         var projectDir = ProjectPathHelper.ResolveStarterProjectPath(_wwiseCliOptions);
         if (string.IsNullOrEmpty(projectDir))
+        {
             return false;
+        }
 
         var cssPath = _cssUnrealEngineOptions.EffectiveInstallPath;
         if (!SmehState.EnsureStepsCompleted(
@@ -38,7 +40,10 @@ public class GenerateVsProjectService
         {
             AnsiConsole.MarkupLineInterpolated($"[red]FactoryGame.uproject not found at: {Markup.Escape(uprojectPath)}[/]");
             if (!ProjectPathHelper.TryPromptProjectPath(out projectDir, out uprojectPath))
+            {
                 return false;
+            }
+
             SmehState.SetLastClonePath(projectDir!);
         }
 
@@ -47,7 +52,10 @@ public class GenerateVsProjectService
         {
             AnsiConsole.MarkupLineInterpolated($"[red]UnrealBuildTool.exe not found at: {Markup.Escape(unrealBuildToolPath)}[/]");
             if (!ProjectPathHelper.TryPromptEnginePath(ref cssPath))
+            {
                 return false;
+            }
+
             unrealBuildToolPath = Path.Combine(cssPath, "Engine", "Binaries", "DotNET", "UnrealBuildTool", "UnrealBuildTool.exe");
             if (!File.Exists(unrealBuildToolPath))
             {
@@ -65,9 +73,15 @@ public class GenerateVsProjectService
         {
             AnsiConsole.MarkupLineInterpolated($"[red]UnrealBuildTool failed (exit code {result.ExitCode}).[/]");
             if (!string.IsNullOrEmpty(result.StdError))
+            {
                 AnsiConsole.WriteLine(result.StdError);
+            }
+
             if (!string.IsNullOrEmpty(result.StdOut))
+            {
                 AnsiConsole.WriteLine(result.StdOut);
+            }
+
             return false;
         }
         AnsiConsole.MarkupLine("[green]Visual Studio project files generated successfully.[/]");

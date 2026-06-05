@@ -8,7 +8,9 @@ public static class WwiseCredentialsHelper
     public static bool Ensure(WwiseCliOptions options)
     {
         if (!string.IsNullOrWhiteSpace(options.Email) && !string.IsNullOrWhiteSpace(options.Password))
+        {
             return true;
+        }
 
         AnsiConsole.MarkupLine("[dim]Wwise SDK download requires an Audiokinetic account (free at audiokinetic.com).[/]");
         options.Email = AnsiConsole.Prompt(new TextPrompt<string>("Wwise / Audiokinetic email:")

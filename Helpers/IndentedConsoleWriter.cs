@@ -32,7 +32,10 @@ public sealed class IndentedConsoleWriter : TextWriter
         {
             _inner.Write(value);
             if (value is >= '@' and <= '~')
+            {
                 _inAnsiControlSequence = false;
+            }
+
             return;
         }
 
@@ -52,24 +55,34 @@ public sealed class IndentedConsoleWriter : TextWriter
         _inner.Write(value);
 
         if (value is '\r' or '\n')
+        {
             _atLineStart = true;
+        }
         else if (!char.IsControl(value))
+        {
             _atLineStart = false;
+        }
     }
 
     public override void Write(string? value)
     {
         if (value == null)
+        {
             return;
+        }
 
         foreach (var character in value)
+        {
             Write(character);
+        }
     }
 
     public override void Write(char[] buffer, int index, int count)
     {
         for (var i = index; i < index + count; i++)
+        {
             Write(buffer[i]);
+        }
     }
 
     public override void Flush()

@@ -31,11 +31,15 @@ public class StarterProjectService
     public async Task<bool> RunAsync()
     {
         if (!SmehState.RunAllUnattended)
+        {
             StarterProjectBranchHelper.Prompt(_options);
+        }
 
         var cssPath = _cssUnrealEngineOptions.InstallPath?.Trim();
         if (!SmehState.EnsureStepsCompleted(new[] { SmehState.StepVisualStudio, SmehState.StepClang, SmehState.StepCssUnrealEngine }, cssUnrealEnginePath: string.IsNullOrEmpty(cssPath) ? null : cssPath))
+        {
             return false;
+        }
 
         string basePath;
         if (SmehState.RunAllUnattended && !string.IsNullOrWhiteSpace(_options.DefaultClonePath?.Trim()))
@@ -119,9 +123,15 @@ public class StarterProjectService
         {
             AnsiConsole.MarkupLine("[red]Clone failed.[/]");
             if (!string.IsNullOrEmpty(result.StdError))
+            {
                 AnsiConsole.WriteLine(result.StdError);
+            }
+
             if (!string.IsNullOrEmpty(result.StdOut))
+            {
                 AnsiConsole.WriteLine(result.StdOut);
+            }
+
             return false;
         }
 
@@ -143,7 +153,9 @@ public class StarterProjectService
             });
             p?.WaitForExit(5000);
             if (p != null && p.ExitCode == 0)
+            {
                 return "git";
+            }
         }
         catch
         {
@@ -151,7 +163,10 @@ public class StarterProjectService
         }
         var defaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Git", "cmd", "git.exe");
         if (File.Exists(defaultPath))
+        {
             return defaultPath;
+        }
+
         return null;
     }
 

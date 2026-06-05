@@ -26,12 +26,18 @@ public class CssUnrealEngineService
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing DirectX End-User Runtime (required for Unreal Engine)...[/]");
         var directXService = new DirectXRuntimeService(_downloadHelper, _processRunner);
         if (!await directXService.RunAsync())
+        {
             AnsiConsole.MarkupLine("[yellow]DirectX install failed or was skipped. Unreal Engine may show XINPUT1_3.dll errors. Continuing with UE install.[/]");
+        }
+
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Visual C++ Redistributable 2015-2022 (x64) (required for Unreal Engine)...[/]");
         var vcRedistService = new VcRedistService(_downloadHelper, _processRunner);
         if (!await vcRedistService.RunAsync())
+        {
             AnsiConsole.MarkupLine("[yellow]VC++ Redist install failed or was skipped. Continuing with UE install.[/]");
+        }
+
         AnsiConsole.WriteLine();
     }
 
@@ -84,10 +90,16 @@ public class CssUnrealEngineService
             .HighlightStyle(SmehTheme.AccentStyle)
             .AddChoices("Yes", "No"));
         if (runNow == "No")
+        {
             return false;
+        }
+
         var installFolder = GetManualInstallFolder();
         if (string.IsNullOrEmpty(installFolder))
+        {
             return false;
+        }
+
         await RunDirectXAndVcRedistAsync();
         return await RunInstallerFromFolderAsync(installFolder);
     }
@@ -96,7 +108,10 @@ public class CssUnrealEngineService
     private bool PromptInstallPath()
     {
         if (SmehState.RunAllUnattended && !string.IsNullOrWhiteSpace(_options.InstallPath))
+        {
             return true;
+        }
+
         AnsiConsole.MarkupLineInterpolated($"[dim]Default install location: [white]{Markup.Escape(DefaultInstallPath)}[/][/]");
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Use this location or choose a custom path?")
@@ -127,7 +142,10 @@ public class CssUnrealEngineService
     {
         var args = UnrealEngineInstallerArgs;
         if (!string.Equals(installPath.Trim(), DefaultInstallPath, StringComparison.OrdinalIgnoreCase))
+        {
             args += $" /DIR=\"{installPath.Trim()}\"";
+        }
+
         return args;
     }
 
@@ -146,7 +164,10 @@ public class CssUnrealEngineService
             .AddChoices("Yes", "No"));
         SmehState.LastUnrealEngineInstallerFolder = null;
         if (choice != "Yes")
+        {
             return;
+        }
+
         var filePaths = GetManualInstallFilePaths(folder);
         foreach (var path in filePaths)
         {
@@ -169,13 +190,19 @@ public class CssUnrealEngineService
     private static void OfferToDeleteInstallerFiles(IReadOnlyList<string> filePaths)
     {
         if (filePaths.Count == 0)
+        {
             return;
+        }
+
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Delete installer files?")
             .HighlightStyle(SmehTheme.AccentStyle)
             .AddChoices("Yes", "No"));
         if (choice != "Yes")
+        {
             return;
+        }
+
         foreach (var path in filePaths)
         {
             try
@@ -199,7 +226,10 @@ public class CssUnrealEngineService
         exePath = null;
         var exe = Path.Combine(folder, AppDefaults.CssUnrealEngineInstallerFileName);
         if (!File.Exists(exe) || GetManualInstallBinPaths(folder).Count == 0)
+        {
             return false;
+        }
+
         exePath = exe;
         return true;
     }
@@ -207,7 +237,9 @@ public class CssUnrealEngineService
     private static IReadOnlyList<string> GetManualInstallBinPaths(string folder)
     {
         if (!Directory.Exists(folder))
+        {
             return Array.Empty<string>();
+        }
 
         return Directory.GetFiles(folder, AppDefaults.CssUnrealEngineInstallerBinPattern)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
@@ -232,7 +264,9 @@ public class CssUnrealEngineService
                 .HighlightStyle(SmehTheme.AccentStyle)
                 .AddChoices("Yes", "No, choose another folder"));
             if (useDownloads == "Yes")
+            {
                 return downloadsPath;
+            }
         }
 
         var folder = AnsiConsole.Prompt(new TextPrompt<string>("Files not found in Downloads. Enter the folder path where you saved the UnrealEngine-CSS-Editor-Win64 files:")
@@ -259,7 +293,10 @@ public class CssUnrealEngineService
     private async Task<bool> RunInstallerFromFolderAsync(string folder)
     {
         if (SmehState.RunAllUnattended)
+        {
             SmehState.LastUnrealEngineInstallerFolder = folder;
+        }
+
         if (!HasManualInstallFiles(folder, out var exePath) || exePath == null)
         {
             AnsiConsole.MarkupLine("[red]Installer files not found.[/]");
@@ -267,15 +304,22 @@ public class CssUnrealEngineService
         }
         AnsiConsole.MarkupLineInterpolated($"[dim]Running installer: {Markup.Escape(AppDefaults.CssUnrealEngineInstallerFileName)}[/]");
         if (!PromptInstallPath())
+        {
             return false;
+        }
+
         var result = await _processRunner.RunAsync(exePath, GetInstallerArgs(_options.InstallPath), folder, waitForExit: true);
         if (result.ExitCode != 0)
+        {
             AnsiConsole.MarkupLineInterpolated($"[yellow]Installer exited with code {result.ExitCode}.[/]");
+        }
         else
         {
             AnsiConsole.MarkupLine("[green]Installation finished successfully.[/]");
             if (!SmehState.RunAllUnattended)
+            {
                 OfferToDeleteInstallerFiles(GetManualInstallFilePaths(folder));
+            }
         }
         return result.ExitCode == 0;
     }

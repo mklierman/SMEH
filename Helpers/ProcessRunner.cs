@@ -33,8 +33,8 @@ public class ProcessRunner
         var stderr = new StringBuilder();
 
         using var process = new Process { StartInfo = psi };
-        process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
-        process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) { stdout.AppendLine(e.Data); } };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) { stderr.AppendLine(e.Data); } };
 
         PrintCommand(fileName, psi.Arguments, psi.WorkingDirectory);
         process.Start();
@@ -42,7 +42,9 @@ public class ProcessRunner
         process.BeginErrorReadLine();
 
         if (waitForExit)
+        {
             await process.WaitForExitAsync();
+        }
 
         return new ProcessRunResult(process.ExitCode, stdout.ToString().TrimEnd(), stderr.ToString().TrimEnd());
     }
@@ -73,7 +75,9 @@ public class ProcessRunner
                 AnsiConsole.WriteLine(e.Data);
                 stdout.AppendLine(e.Data);
                 if (redirectStdin && sendInputWhenLine?.Invoke(e.Data) is { } response)
+                {
                     TrySendInput(process, response);
+                }
             }
         };
         process.ErrorDataReceived += (_, e) =>
@@ -83,7 +87,9 @@ public class ProcessRunner
                 AnsiConsole.WriteLine(e.Data);
                 stderr.AppendLine(e.Data);
                 if (redirectStdin && sendInputWhenLine?.Invoke(e.Data) is { } response)
+                {
                     TrySendInput(process, response);
+                }
             }
         };
 
@@ -93,7 +99,9 @@ public class ProcessRunner
         process.BeginErrorReadLine();
 
         if (!attachStdinToConsole && sendInputAfterDelayMs.HasValue && !string.IsNullOrEmpty(sendInputAfterDelay))
+        {
             _ = SendInputAfterDelayAsync(process, sendInputAfterDelayMs.Value, sendInputAfterDelay);
+        }
 
         if (waitForExit)
         {
@@ -104,7 +112,10 @@ public class ProcessRunner
                 {
                     var completed = await Task.WhenAny(exitTask, Task.Delay(heartbeatInterval.Value));
                     if (completed == exitTask)
+                    {
                         break;
+                    }
+
                     AnsiConsole.MarkupLine($"[dim]{heartbeatMessage}[/]");
                 }
                 await exitTask;
@@ -215,7 +226,10 @@ public class ProcessRunner
     public static bool IsRunningElevated()
     {
         if (!OperatingSystem.IsWindows())
+        {
             return false;
+        }
+
         try
         {
             using var identity = WindowsIdentity.GetCurrent();
@@ -242,9 +256,15 @@ public class ProcessRunner
         PrintCommand(fileName, psi.Arguments, psi.WorkingDirectory);
         using var process = Process.Start(psi);
         if (process == null)
+        {
             return new ProcessRunResult(-1, "", "Failed to start elevated process.");
+        }
+
         if (waitForExit)
+        {
             await process.WaitForExitAsync();
+        }
+
         return new ProcessRunResult(process.ExitCode, "", "");
     }
 
@@ -261,7 +281,10 @@ public class ProcessRunner
         {
             await Task.Delay(delayMs);
             if (process.HasExited)
+            {
                 return;
+            }
+
             try
             {
                 process.StandardInput.Write(input);
@@ -278,7 +301,9 @@ public class ProcessRunner
     private static void TrySendInput(Process process, string response)
     {
         if (process.HasExited)
+        {
             return;
+        }
         try
         {
             process.StandardInput.WriteLine(response);

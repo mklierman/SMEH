@@ -16,11 +16,15 @@ public static class ProjectPathHelper
     {
         var path = options.StarterProjectPath?.Trim();
         if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+        {
             return path;
+        }
 
         path = SmehState.GetLastClonePath();
         if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+        {
             return path;
+        }
 
         AnsiConsole.MarkupLine("[yellow]Starter project path not found. Run option 5 (Starter Project) first to clone the repo,[/]");
         AnsiConsole.MarkupLine("[yellow]or enter the clone directory when prompted.[/]");
