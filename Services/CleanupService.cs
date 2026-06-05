@@ -3,7 +3,7 @@ using SMEH;
 
 namespace SMEH.Services;
 
-/// <summary>Removes SMEH temp files under TempRoot; menu option 10.</summary>
+/// <summary>Removes SMEH temp files under TempRoot; menu option 9.</summary>
 public class CleanupService
 {
     /// <summary>Root temp directory used by the app (VS2022, Clang, CssUnrealEngine, WwiseCLI, GitInstall).</summary>

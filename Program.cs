@@ -5,6 +5,9 @@ using SMEH;
 using SMEH.Helpers;
 using SMEH.Services;
 
+const int AppLeftPadding = 2;
+Console.SetOut(new IndentedConsoleWriter(Console.Out, AppLeftPadding));
+
 var options = AppDefaults.CreateOptions();
 SmehState.ClearLegacyPersistedState();
 
@@ -18,8 +21,9 @@ var wwiseCliService = new WwiseCliService(options.WwiseCli, options.CssUnrealEng
 var starterProjectService = new StarterProjectService(options.StarterProject, options.CssUnrealEngine, downloadHelper, processRunner);
 var generateVsProjectService = new GenerateVsProjectService(options.CssUnrealEngine, options.WwiseCli, processRunner);
 var buildEditorService = new BuildEditorService(options.CssUnrealEngine, options.WwiseCli, processRunner);
-var openEditorService = new OpenEditorService(options.WwiseCli);
 var cleanupService = new CleanupService();
+var openDocsService = new OpenDocsService();
+var openDiscordService = new OpenDiscordService();
 
 var version = Assembly.GetExecutingAssembly().GetName().Version;
 var versionString = version != null ? $"{version.Major}.{version.Minor}" : "1.0";
@@ -54,16 +58,17 @@ while (true)
     {
         var completed = choice switch
         {
-            "1" => await RunAllAsync(options, cssUnrealService, visualStudioService, clangService, starterProjectService, wwiseCliService, generateVsProjectService, buildEditorService, cleanupService),
+            "1" => await RunAllAsync(options, cssUnrealService, visualStudioService, clangService, starterProjectService, wwiseCliService, generateVsProjectService, buildEditorService, cleanupService, openDocsService),
             "2" => await RunOptionAsync("Setting up CSS Unreal Engine", () => cssUnrealService.RunAsync()),
             "3" => await RunOptionAsync("Installing Visual Studio 2022...", () => visualStudioService.RunAsync()),
             "4" => await RunOptionAsync("Installing Clang...", () => clangService.RunAsync()),
             "5" => await RunOptionAsync("Cloning Starter Project", () => starterProjectService.RunAsync()),
             "6" => await RunOptionAsync("Setting up Wwise-CLI", () => wwiseCliService.RunAsync()),
             "7" => await RunOptionAsync("Generating Visual Studio project files...", () => generateVsProjectService.RunAsync()),
-            "8" => await RunOptionAsync("Building Editor", () => buildEditorService.RunAsync(), useDynamicDisplay: true),
-            "9" => await RunOptionAsync("Opening project", () => openEditorService.RunAsync()),
-            "10" => await RunOptionAsync("Cleanup temp files", () => cleanupService.RunAsync()),
+            "8" => await RunBuildEditorAsync(buildEditorService, openDocsService),
+            "9" => await RunOptionAsync("Cleanup temp files", () => cleanupService.RunAsync()),
+            "10" => await RunOptionAsync("Opening docs", () => openDocsService.RunAsync()),
+            "11" => await RunOptionAsync("Opening Modding Discord", () => openDiscordService.RunAsync()),
             _ => false
         };
 
@@ -71,7 +76,7 @@ while (true)
         {
             // Only show "Invalid option" when the choice was not a menu option (e.g. wrong key). When a valid option failed, the service already showed the reason.
             if (!MenuOptions.ValidChoices.Contains(choice))
-                AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.AccentHex}]Invalid option. Please choose 1-10 or 0 to exit.[/]");
+                AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.AccentHex}]Invalid option. Please choose 1-11 or 0 to exit.[/]");
         }
         else
         {
@@ -105,22 +110,25 @@ static string? ShowMenu(SmehOptions options)
         new SelectionPrompt<string>()
             .Title($"[{SmehTheme.AccentHex}]Select option:[/]")
             .HighlightStyle(SmehTheme.AccentStyle)
+            .PageSize(MenuOptions.VisibleChoiceCount)
             .EnableSearch()
             .SearchPlaceholderText($"[{SmehTheme.TextSecondaryHex}]Type to filter (e.g. build, wwise, exit)...[/]")
             .AddChoices(
-                "1. Run all (unattended)",
-                "2. CSS Unreal Engine",
-                "3. Visual Studio 2022",
-                "4. Clang",
-                "5. Starter Project",
-                "6. Wwise",
-                "7. Generate Visual Studio project files",
-                "8. Build Editor",
-                "9. Open in Unreal Editor",
-                "10. Cleanup temp files",
-                "0. Exit"
+                " 1. Run all setup steps",
+                " 2. CSS Unreal Engine",
+                " 3. Visual Studio 2022",
+                " 4. Clang",
+                " 5. Starter Project",
+                " 6. Wwise",
+                " 7. Generate Visual Studio project files",
+                " 8. Build Editor",
+                " 9. Cleanup temp files",
+                "10. Open Docs",
+                "11. Open Modding Discord",
+                " 0. Exit"
             ));
-    return choice.Length >= 1 ? choice[0].ToString() : null;
+    var separatorIndex = choice.IndexOf('.');
+    return separatorIndex > 0 ? choice[..separatorIndex].Trim() : null;
 }
 
 static async Task<bool> RunAllAsync(SmehOptions options,
@@ -131,9 +139,10 @@ static async Task<bool> RunAllAsync(SmehOptions options,
     WwiseCliService wwiseCliService,
     GenerateVsProjectService generateVsProjectService,
     BuildEditorService buildEditorService,
-    CleanupService cleanupService)
+    CleanupService cleanupService,
+    OpenDocsService openDocsService)
 {
-    AnsiConsole.MarkupLine("[bold]Run all (unattended)[/] — engine path, SML branch, starter project folder, and Wwise credentials are collected now; then steps 1–7 run without further prompts.");
+    AnsiConsole.MarkupLine("[bold]Run all setup steps[/] — engine path, SML branch, starter project folder, and Wwise credentials are collected now; then steps 1–7 run without further prompts.");
     AnsiConsole.WriteLine();
 
     // 1) Engine install path
@@ -204,6 +213,8 @@ static async Task<bool> RunAllAsync(SmehOptions options,
             AnsiConsole.MarkupLineInterpolated($"[{SmehTheme.FicsitOrange}]  Completed in {FormatDuration(stepSw.Elapsed)}.[/]");
             AnsiConsole.WriteLine();
         }
+        await OfferNextSetupDocsAsync(openDocsService);
+
         totalSw.Stop();
         AnsiConsole.WriteLine();
         AnsiConsole.Write(new Panel(new Markup($"[green]Run all completed successfully.[/]\n[dim]Total time: {FormatDuration(totalSw.Elapsed)}[/]"))
@@ -225,6 +236,27 @@ static async Task<bool> RunAllAsync(SmehOptions options,
     {
         SmehState.RunAllUnattended = false;
     }
+}
+
+static async Task<bool> RunBuildEditorAsync(BuildEditorService buildEditorService, OpenDocsService openDocsService)
+{
+    var completed = await RunOptionAsync("Building Editor", () => buildEditorService.RunAsync(), useDynamicDisplay: true);
+    if (completed)
+        await OfferNextSetupDocsAsync(openDocsService);
+    return completed;
+}
+
+static async Task OfferNextSetupDocsAsync(OpenDocsService openDocsService)
+{
+    const string projectSetupUrl = "https://docs.ficsit.app/satisfactory-modding/latest/Development/BeginnersGuide/project_setup.html#_open_unreal_editor";
+
+    var answer = AnsiConsole.Prompt(new SelectionPrompt<string>()
+        .Title("Open the next setup step in the FICSIT docs?")
+        .HighlightStyle(SmehTheme.AccentStyle)
+        .AddChoices("Yes", "No"));
+
+    if (answer == "Yes")
+        await openDocsService.RunAsync(projectSetupUrl, "next setup docs");
 }
 
 static async Task<bool> RunOptionAsync(string statusMessage, Func<Task<bool>> run, bool useDynamicDisplay = false)
@@ -260,5 +292,6 @@ static string FormatDuration(TimeSpan elapsed)
 
 file static class MenuOptions
 {
-    public static readonly HashSet<string> ValidChoices = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    public static readonly HashSet<string> ValidChoices = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
+    public const int VisibleChoiceCount = 12;
 }

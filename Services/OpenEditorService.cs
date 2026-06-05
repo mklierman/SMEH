@@ -5,7 +5,7 @@ using SMEH.Helpers;
 
 namespace SMEH.Services;
 
-/// <summary>Opens the project’s FactoryGame.uproject in the default application (Unreal Editor); menu option 9.</summary>
+/// <summary>Opens the project's FactoryGame.uproject in the default application.</summary>
 public class OpenEditorService
 {
     private readonly WwiseCliOptions _wwiseCliOptions;
