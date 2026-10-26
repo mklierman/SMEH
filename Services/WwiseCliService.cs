@@ -134,10 +134,24 @@ public class WwiseCliService
             SmehState.SetLastClonePath(projectDir);
         }
 
+        // SML pins the Wwise version per branch in its CI workflow; prefer that over the built-in defaults
+        var sdkVersion = _options.EffectiveSdkVersion;
+        var integrationVersion = _options.EffectiveIntegrationVersion;
+        if (WwiseVersionHelper.TryReadFromProject(projectDir, out var projectSdkVersion, out var projectIntegrationVersion))
+        {
+            sdkVersion = projectSdkVersion;
+            integrationVersion = projectIntegrationVersion;
+            AnsiConsole.MarkupLineInterpolated($"[dim]Using Wwise SDK {sdkVersion} / integration {integrationVersion} from the project's build workflow.[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLineInterpolated($"[yellow]Could not detect the project's Wwise version; falling back to SDK {sdkVersion} / integration {integrationVersion}.[/]");
+        }
+
         // 1. Download SDK
         var emailArg = WwiseCredentialsHelper.QuoteForCli(_options.Email);
         var passwordArg = WwiseCredentialsHelper.QuoteForCli(_options.Password);
-        var downloadArgs = $"download --sdk-version \"{_options.EffectiveSdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --filter DeploymentPlatforms=Linux --filter DeploymentPlatforms= --email {emailArg} --password {passwordArg}";
+        var downloadArgs = $"download --sdk-version \"{sdkVersion}\" --filter Packages=SDK --filter DeploymentPlatforms=Windows_vc160 --filter DeploymentPlatforms=Windows_vc170 --filter DeploymentPlatforms=Linux --filter DeploymentPlatforms= --email {emailArg} --password {passwordArg}";
         AnsiConsole.MarkupLine($"[dim]Running: wwise-cli download ... (output below)[/]");
         var downloadResult = await _processRunner.RunWithConsoleOutputAsync(exePath, downloadArgs, workingDir, waitForExit: true, sendInputWhenLine: line =>
         {
@@ -176,7 +190,7 @@ public class WwiseCliService
         AnsiConsole.MarkupLine("[green]SDK download completed.[/]");
 
         // 2. Integrate with Unreal project
-        var integrateArgs = $"integrate-ue --email {emailArg} --password {passwordArg} --integration-version \"{_options.EffectiveIntegrationVersion}\" --project \"{uprojectPath}\"";
+        var integrateArgs = $"integrate-ue --email {emailArg} --password {passwordArg} --integration-version \"{integrationVersion}\" --project \"{uprojectPath}\"";
         AnsiConsole.MarkupLine($"[dim]Running: wwise-cli integrate-ue ... (output below)[/]");
         
         var integrateResult = await _processRunner.RunWithConsoleOutputAsync(exePath, integrateArgs, workingDir, waitForExit: true, attachStdinToConsole: true, heartbeatInterval: TimeSpan.FromSeconds(30), heartbeatMessage: "Integrate step still running...");

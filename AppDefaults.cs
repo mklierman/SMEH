@@ -32,8 +32,9 @@ public static class AppDefaults
     // Wwise-CLI
     public const string WwiseCliRepository = "mircearoata/wwise-cli";
     public const string WwiseCliReleaseTag = "v0.2.2";
-    public const string WwiseCliSdkVersion = "2023.1.14.8770";
-    public const string WwiseCliIntegrationVersion = "2023.1.14.3555";
+    // Fallback only; WwiseCliService reads the versions from the SML checkout's .github/workflows/build.yml
+    public const string WwiseCliSdkVersion = "2025.1.6.9117";
+    public const string WwiseCliIntegrationVersion = "2025.1.6.4248";
 
     // Starter Project
     public const string StarterProjectRepositoryUrl = "https://github.com/satisfactorymodding/SatisfactoryModLoader.git";
