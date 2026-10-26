@@ -29,7 +29,7 @@ public class VcRedistService
         var installerPath = Path.Combine(tempDir, AppDefaults.VcRedistX64FileName);
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Visual C++ Redistributable 2015-2022 (x64)...[/]");
-        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "VC++"));
+        var progress = ConsoleProgressBar.Create("VC++");
         try
         {
             await _downloadHelper.DownloadFileAsync(AppDefaults.VcRedistX64Url, installerPath, progress);

@@ -6,6 +6,13 @@ public static class ConsoleProgressBar
     private const int BarWidth = 30;
     private static readonly object Lock = new();
 
+    /// <summary>
+    /// Creates a progress reporter that draws on the reporting thread. Unlike <see cref="Progress{T}"/>, which queues
+    /// callbacks to the thread pool in a console app, no updates can land after <see cref="Clear"/>.
+    /// </summary>
+    /// <param name="label">Optional prefix.</param>
+    public static IProgress<DownloadProgress> Create(string? label = null) => new SynchronousProgress(label);
+
     /// <summary>Draws one line: a progress bar and percentage/size.</summary>
     /// <param name="p">Current download progress.</param>
     /// <param name="label">Optional prefix.</param>
@@ -46,6 +53,32 @@ public static class ConsoleProgressBar
             {
                 Console.WriteLine();
             }
+        }
+    }
+
+    private sealed class SynchronousProgress : IProgress<DownloadProgress>
+    {
+        // Reports arrive on every read; redrawing each time would slow the download itself
+        private static readonly TimeSpan RedrawInterval = TimeSpan.FromMilliseconds(100);
+
+        private readonly string? _label;
+        private readonly System.Diagnostics.Stopwatch _sinceLastDraw = new();
+
+        public SynchronousProgress(string? label)
+        {
+            _label = label;
+        }
+
+        public void Report(DownloadProgress value)
+        {
+            var isComplete = value.TotalBytes.HasValue && value.BytesRead >= value.TotalBytes.Value;
+            if (_sinceLastDraw.IsRunning && _sinceLastDraw.Elapsed < RedrawInterval && !isComplete)
+            {
+                return;
+            }
+
+            ConsoleProgressBar.Report(value, _label);
+            _sinceLastDraw.Restart();
         }
     }
 }

@@ -65,8 +65,9 @@ while (true)
         {
             "1" => await RunAllAsync(options, cssUnrealService, visualStudioService, clangService, starterProjectService, wwiseCliService, generateVsProjectService, buildEditorService, cleanupService, openDocsService),
             "2" => await RunOptionAsync("Setting up CSS Unreal Engine", () => cssUnrealService.RunAsync()),
-            "3" => await RunOptionAsync("Installing Visual Studio 2022...", () => visualStudioService.RunAsync()),
-            "4" => await RunOptionAsync("Installing Clang...", () => clangService.RunAsync()),
+            // These show their own download progress and installer spinner, which an outer spinner would conflict with
+            "3" => await RunOptionAsync("Installing Visual Studio 2022...", () => visualStudioService.RunAsync(), useDynamicDisplay: true),
+            "4" => await RunOptionAsync("Installing Clang...", () => clangService.RunAsync(), useDynamicDisplay: true),
             "5" => await RunOptionAsync("Cloning Starter Project", () => starterProjectService.RunAsync()),
             "6" => await RunOptionAsync("Setting up Wwise-CLI", () => wwiseCliService.RunAsync()),
             "7" => await RunOptionAsync("Generating Visual Studio project files...", () => generateVsProjectService.RunAsync()),

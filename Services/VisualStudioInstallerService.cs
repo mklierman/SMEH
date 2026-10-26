@@ -64,7 +64,7 @@ public class VisualStudioInstallerService
 
             configPath = Path.Combine(tempDir, configFileName);
             AnsiConsole.MarkupLine($"[dim]Downloading Visual Studio config (SML workload)...[/]");
-            var configProgress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Config"));
+            var configProgress = ConsoleProgressBar.Create("Config");
             await _downloadHelper.DownloadFileAsync(_options.ConfigFileUrl, configPath, configProgress);
             ConsoleProgressBar.Clear();
             AnsiConsole.MarkupLine("[green]Config download complete.[/]");
@@ -79,7 +79,7 @@ public class VisualStudioInstallerService
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Installing Visual Studio 2022 Community Edition (free).[/]");
         AnsiConsole.MarkupLine($"[dim]Downloading bootstrapper...[/]");
-        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
+        var progress = ConsoleProgressBar.Create("Bootstrapper");
         await _downloadHelper.DownloadFileAsync(AppDefaults.VisualStudioBootstrapperUrl, bootstrapperPath, progress);
         ConsoleProgressBar.Clear();
         AnsiConsole.MarkupLine("[green]Download complete.[/]");
@@ -91,7 +91,7 @@ public class VisualStudioInstallerService
         }
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Running Visual Studio installer (this may take a long time)...[/]");
-        var result = await _processRunner.RunAsync(bootstrapperPath, arguments, tempDir, waitForExit: true);
+        var result = await StatusSpinner.RunAsync("Installing Visual Studio 2022...", () => _processRunner.RunAsync(bootstrapperPath, arguments, tempDir, waitForExit: true));
 
         if (result.ExitCode != 0)
         {
@@ -115,7 +115,7 @@ public class VisualStudioInstallerService
         {
             AnsiConsole.MarkupLine("[yellow]Visual Studio Installer was not found. Downloading the VS 2022 Community bootstrapper to apply the config.[/]");
             installerPath = Path.Combine(tempDir, AppDefaults.VisualStudioBootstrapperFileName);
-            var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Bootstrapper"));
+            var progress = ConsoleProgressBar.Create("Bootstrapper");
             await _downloadHelper.DownloadFileAsync(AppDefaults.VisualStudioBootstrapperUrl, installerPath, progress);
             ConsoleProgressBar.Clear();
             AnsiConsole.MarkupLine("[green]Download complete.[/]");
@@ -123,7 +123,7 @@ public class VisualStudioInstallerService
 
         var arguments = $"modify --installPath \"{installationPath}\" --config \"{configPath}\" --passive --wait --norestart";
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Applying Visual Studio config (SML workload) to the existing installation...[/]");
-        var result = await _processRunner.RunAsync(installerPath, arguments, tempDir, waitForExit: true);
+        var result = await StatusSpinner.RunAsync("Applying Visual Studio config...", () => _processRunner.RunAsync(installerPath, arguments, tempDir, waitForExit: true));
 
         if (result.ExitCode != 0)
         {

@@ -45,7 +45,7 @@ public class ClangInstallerService
             var tempDir = Path.Combine(CleanupService.TempRoot, "Clang");
             installerPath = Path.Combine(tempDir, AppDefaults.ClangInstallerFileName);
             AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Clang installer...[/]");
-            var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Clang"));
+            var progress = ConsoleProgressBar.Create("Clang");
             await _downloadHelper.DownloadFileAsync(installerUrlOrPath, installerPath, progress);
             ConsoleProgressBar.Clear();
             AnsiConsole.MarkupLine("[green]Download complete. Running installer...[/]");
@@ -61,7 +61,7 @@ public class ClangInstallerService
             AnsiConsole.MarkupLine("[green]Running local installer...[/]");
         }
 
-        var result = await _processRunner.RunAsync(installerPath, "/S", null, waitForExit: true);
+        var result = await StatusSpinner.RunAsync("Installing Clang...", () => _processRunner.RunAsync(installerPath, "/S", null, waitForExit: true));
         if (result.ExitCode != 0 && !string.IsNullOrEmpty(result.StdError))
         {
             AnsiConsole.WriteLine("Stderr: " + result.StdError);

@@ -204,7 +204,7 @@ public class StarterProjectService
         Directory.CreateDirectory(tempDir);
         var installerPath = Path.Combine(tempDir, assetName);
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading Git installer...[/]");
-        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Git"));
+        var progress = ConsoleProgressBar.Create("Git");
         try
         {
             await _downloadHelper.DownloadFileAsync(downloadUrl, installerPath, progress);

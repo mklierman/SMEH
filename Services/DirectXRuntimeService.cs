@@ -29,7 +29,7 @@ public class DirectXRuntimeService
         var installerPath = Path.Combine(tempDir, AppDefaults.DirectXWebInstallerFileName);
 
         AnsiConsole.MarkupLine($"[{SmehTheme.FicsitOrange}]Downloading DirectX End-User Runtime Web Installer...[/]");
-        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "DirectX"));
+        var progress = ConsoleProgressBar.Create("DirectX");
         try
         {
             await _downloadHelper.DownloadFileAsync(AppDefaults.DirectXWebInstallerUrl, installerPath, progress);

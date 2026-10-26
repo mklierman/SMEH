@@ -81,7 +81,7 @@ public class WwiseCliService
         var destPath = Path.Combine(tempDir, assetName);
 
         AnsiConsole.MarkupLineInterpolated($"[dim]Downloading {Markup.Escape(assetName)}...[/]");
-        var progress = new Progress<DownloadProgress>(p => ConsoleProgressBar.Report(p, "Wwise-CLI"));
+        var progress = ConsoleProgressBar.Create("Wwise-CLI");
         await _downloadHelper.DownloadFileAsync(downloadUrl, destPath, progress);
         ConsoleProgressBar.Clear();
         AnsiConsole.WriteLine();
